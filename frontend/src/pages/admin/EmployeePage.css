@@ -1,0 +1,726 @@
+.employee-page {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.employee-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.employee-content {
+  flex: 1;
+  padding: 0.75rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.employee-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.employee-header h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.employee-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.employee-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.employee-search input {
+  padding: 0.55rem 2.2rem 0.55rem 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  min-width: 210px;
+  transition: border-color 0.2s ease;
+}
+
+.employee-search input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.search-clear-btn:hover {
+  color: #4b5563;
+}
+
+.report-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  font-size: 0.8125rem;
+}
+
+.report-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.report-btn:disabled {
+  background: #bfdbfe;
+  color: #e0f2fe;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.add-employee-btn {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.8125rem;
+}
+
+.add-employee-btn:hover {
+  background: #16a34a;
+}
+
+.employee-form-container {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.employee-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.625rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #22c55e;
+}
+
+.role-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.role-input-group select {
+  flex: 1;
+}
+
+.add-role-btn {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: none;
+  padding: 0.875rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.add-role-btn:hover {
+  background: #e5e7eb;
+}
+
+.new-role-input {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.new-role-input input {
+  flex: 1;
+  padding: 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.save-role-btn {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-role-btn:hover {
+  background: #16a34a;
+}
+
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid #fecaca;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
+.cancel-btn {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+.submit-btn {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.employees-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.employees-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.employees-table thead {
+  background: #f9fafb;
+}
+
+.employees-table th {
+  padding: 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.employees-table td {
+  padding: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 0.8125rem;
+}
+
+.role-badge {
+  background: #f0fdf4;
+  color: #22c55e;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.password-badge {
+  background: #f3f4f6;
+  color: #6b7280;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.salary-badge {
+  color: #4b5563;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-badge.active {
+  background: #f0fdf4;
+  color: #22c55e;
+}
+
+.status-badge.inactive {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.permission-btn {
+  background: #fef3c7;
+  color: #d97706;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+
+.permission-btn:hover {
+  background: #fde68a;
+}
+
+.edit-btn {
+  background: #dbeafe;
+  color: #1e40af;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+
+.edit-btn:hover {
+  background: #bfdbfe;
+}
+
+.delete-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+}
+
+.employees-table td {
+  white-space: nowrap;
+}
+
+.employees-table td button {
+  margin: 0 0.25rem;
+}
+
+.empty-state {
+  padding: 1.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay .employee-form-container {
+  max-width: 520px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.25rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-overlay .employee-form-container h2 {
+  margin-bottom: 0.875rem !important;
+  font-size: 1.25rem;
+}
+
+.modal-overlay .employee-form {
+  gap: 0.875rem !important;
+}
+
+.modal-overlay .form-row {
+  gap: 0.875rem !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-overlay .form-group {
+  width: 100%;
+  gap: 0.375rem;
+}
+
+.modal-overlay .form-group label {
+  font-size: 0.8rem;
+  margin-bottom: 0;
+}
+
+.modal-overlay .form-group input,
+.modal-overlay .form-group select {
+  padding: 0.625rem !important;
+  font-size: 0.875rem !important;
+}
+
+.modal-overlay .role-input-group {
+  gap: 0.5rem;
+}
+
+.modal-overlay .role-input-group input {
+  padding: 0.625rem !important;
+  font-size: 0.875rem !important;
+}
+
+.modal-overlay .add-role-btn {
+  padding: 0.625rem 0.875rem !important;
+  font-size: 0.8rem !important;
+  white-space: nowrap;
+}
+
+.modal-overlay .form-actions {
+  margin-top: 0.5rem;
+  gap: 0.75rem;
+}
+
+.modal-overlay .form-actions button {
+  padding: 0.625rem 1.25rem !important;
+  font-size: 0.875rem !important;
+}
+
+.modal-overlay .new-role-input {
+  gap: 0.5rem;
+  margin-top: 0.375rem;
+}
+
+.modal-overlay .new-role-input input {
+  padding: 0.625rem !important;
+  font-size: 0.875rem !important;
+}
+
+.modal-overlay .save-role-btn {
+  padding: 0.625rem 1rem !important;
+  font-size: 0.875rem !important;
+}
+
+/* Permission Modal Styles */
+.permission-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.permission-modal h2 {
+  margin-bottom: 0.75rem;
+  color: #1f2937;
+  font-size: 1.5rem;
+}
+
+.permission-subtitle {
+  margin-bottom: 1.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.permission-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.permission-item {
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  transition: all 0.2s;
+}
+
+.permission-item:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.permission-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.permission-checkbox input[type="checkbox"] {
+  margin-right: 0.75rem;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #22c55e;
+}
+
+.permission-checkbox span.checkmark {
+  display: none; /* Hide custom span if using native checkbox */
+}
+
+.permission-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.permission-actions .cancel-btn,
+.permission-actions .submit-btn {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+/* Custom Dropdown Styles */
+.custom-select-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.custom-select-wrapper-edit {
+  position: relative;
+  flex: 1;
+}
+
+.custom-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  margin-top: 0.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.dropdown-item:hover {
+  background: #f3f4f6;
+}
+
+.dropdown-item.no-options {
+  color: #9ca3af;
+  cursor: default;
+}
+
+.dropdown-item.no-options:hover {
+  background: white;
+}
+
+.role-delete-btn {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: bold;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.role-delete-btn:hover {
+  background: #fee2e2;
+}
+
+@media (max-width: 768px) {
+  .employee-page {
+    flex-direction: column;
+  }
+
+  .employee-main-content {
+    width: 100%;
+  }
+
+  .employee-content {
+    padding: 1rem;
+  }
+
+  .employee-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .employee-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .employees-table {
+    overflow-x: auto;
+  }
+
+  .employees-table table {
+    min-width: 600px;
+  }
+}
+
+@media (max-width: 640px) {
+  .employee-content {
+    padding: 0.75rem;
+  }
+
+  .employee-header {
+    gap: 0.75rem;
+  }
+
+  .employee-form-container {
+    padding: 0.875rem;
+  }
+
+  .employee-form {
+    gap: 0.625rem;
+  }
+
+  .employees-table table {
+    min-width: 560px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .employee-content {
+    padding: 0.5rem;
+  }
+
+  .employee-form-container {
+    padding: 0.75rem;
+  }
+
+  .add-employee-btn {
+    width: 100%;
+  }
+}
