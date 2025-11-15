@@ -14,6 +14,7 @@ import ExpensesPage from './pages/admin/ExpensesPage';
 import IncomePage from './pages/admin/IncomePage';
 import ExtraIncomePage from './pages/admin/ExtraIncomePage';
 import MarksPage from './pages/admin/MarksPage';
+import PaymentPage from './pages/admin/PaymentPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -108,6 +109,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <ExtraIncomePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/payment" 
+            element={
+              <ProtectedRoute>
+                <PaymentPage />
               </ProtectedRoute>
             } 
           />

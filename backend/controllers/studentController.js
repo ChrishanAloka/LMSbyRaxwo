@@ -71,7 +71,7 @@ export const createStudent = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!name || !studentId || !email || !birthday || !gender || !mobile || !paymentType) {
+    if (!name || !studentId || !email || !birthday || !gender || !mobile) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
@@ -113,7 +113,7 @@ export const createStudent = async (req, res) => {
       specialNeedsDetails: hasSpecialNeeds ? specialNeedsDetails : undefined,
       guardianName: hasSpecialNeeds ? guardianName : undefined,
       guardianTelephone: hasSpecialNeeds ? guardianTelephone : undefined,
-      paymentType,
+      paymentType: paymentType || undefined,
       totalPrice
     });
 

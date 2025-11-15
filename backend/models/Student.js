@@ -56,7 +56,7 @@ const studentSchema = new mongoose.Schema({
   },
   paymentType: {
     type: String,
-    required: [true, 'Payment type is required'],
+    required: false,
     enum: ['cash', 'card']
   },
   totalPrice: {

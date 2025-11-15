@@ -84,13 +84,15 @@ const AdminDashboard = () => {
         subjectsResponse,
         studentsResponse,
         employeesResponse,
-        classesResponse
+        classesResponse,
+        paymentsResponse
       ] = await Promise.all([
         fetch('https://lms-f679.onrender.com/api/income/statistics', { headers }),
         fetch('https://lms-f679.onrender.com/api/subjects', { headers }),
         fetch('https://lms-f679.onrender.com/api/students', { headers }),
         fetch('https://lms-f679.onrender.com/api/admin/employees', { headers }),
-        fetch('https://lms-f679.onrender.com/api/classes?includeDeleted=false', { headers })
+        fetch('https://lms-f679.onrender.com/api/classes?includeDeleted=false', { headers }),
+        fetch('https://lms-f679.onrender.com/api/payments', { headers })
       ]);
 
       const [
@@ -98,13 +100,15 @@ const AdminDashboard = () => {
         subjectsData,
         studentsData,
         employeesData,
-        classesData
+        classesData,
+        paymentsData
       ] = await Promise.all([
         incomeResponse.json(),
         subjectsResponse.json(),
         studentsResponse.json(),
         employeesResponse.json(),
-        classesResponse.json()
+        classesResponse.json(),
+        paymentsResponse.json()
       ]);
 
       if (!incomeData?.success) {
@@ -127,9 +131,14 @@ const AdminDashboard = () => {
         throw new Error(classesData?.message || 'Failed to fetch classes');
       }
 
+      if (!paymentsData?.success) {
+        throw new Error(paymentsData?.message || 'Failed to fetch payments');
+      }
+
       const subjects = subjectsData.data || [];
       const students = studentsData.data || [];
       const employees = employeesData.data || [];
+      const payments = paymentsData.data || [];
       const fetchedClasses = (classesData.data || []).filter(
         (cls) => cls.status === 'ongoing' && !cls.isDeleted
       );
@@ -150,10 +159,11 @@ const AdminDashboard = () => {
         subjects.map((subject) => [subject._id, subject])
       );
 
+      // Calculate top courses based on payment data
       const courseStats = new Map();
 
-      students.forEach((student) => {
-        (student.subjects || []).forEach((subjectRef) => {
+      payments.forEach((payment) => {
+        (payment.subjects || []).forEach((subjectRef) => {
           const subjectId = typeof subjectRef === 'string' ? subjectRef : subjectRef?._id;
           if (!subjectId) {
             return;
@@ -163,31 +173,33 @@ const AdminDashboard = () => {
             (typeof subjectRef === 'object' && subjectRef !== null ? subjectRef : subjectLookup.get(subjectId)) ||
             {};
 
+          const subjectPrice = subjectInfo.price || 0;
+
           const existing = courseStats.get(subjectId) || {
             id: subjectId,
             name: subjectInfo.name || 'Unknown Subject',
-            price: subjectInfo.price || 0,
+            price: subjectPrice,
             teacher: subjectInfo.conductedBy?.name || subjectInfo.conductedBy || '',
             image: subjectInfo.image || ''
           };
 
+          // Calculate revenue based on subject's actual price
+          // Each payment for this subject contributes its price to revenue
           courseStats.set(subjectId, {
             ...existing,
-            enrollmentCount: (existing.enrollmentCount || 0) + 1
+            enrollmentCount: (existing.enrollmentCount || 0) + 1,
+            revenue: (existing.revenue || 0) + subjectPrice
           });
         });
       });
 
       const computedTopCourses = Array.from(courseStats.values())
-        .map((course) => ({
-          ...course,
-          revenue: (course.price || 0) * (course.enrollmentCount || 0)
-        }))
         .sort((a, b) => {
-          if ((b.enrollmentCount || 0) !== (a.enrollmentCount || 0)) {
-            return (b.enrollmentCount || 0) - (a.enrollmentCount || 0);
+          // Sort by revenue first, then by enrollment count
+          if ((b.revenue || 0) !== (a.revenue || 0)) {
+            return (b.revenue || 0) - (a.revenue || 0);
           }
-          return (b.revenue || 0) - (a.revenue || 0);
+          return (b.enrollmentCount || 0) - (a.enrollmentCount || 0);
         })
         .slice(0, 3);
 

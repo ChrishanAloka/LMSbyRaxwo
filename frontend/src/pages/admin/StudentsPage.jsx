@@ -21,8 +21,7 @@ const StudentsPage = () => {
     hasSpecialNeeds: false,
     specialNeedsDetails: '',
     guardianName: '',
-    guardianTelephone: '',
-    paymentType: ''
+    guardianTelephone: ''
   });
   const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -118,8 +117,7 @@ const StudentsPage = () => {
       hasSpecialNeeds: student.hasSpecialNeeds || false,
       specialNeedsDetails: student.specialNeedsDetails || '',
       guardianName: student.guardianName || '',
-      guardianTelephone: student.guardianTelephone || '',
-      paymentType: student.paymentType || ''
+      guardianTelephone: student.guardianTelephone || ''
     });
     
     setShowForm(true);
@@ -138,8 +136,7 @@ const StudentsPage = () => {
       hasSpecialNeeds: false,
       specialNeedsDetails: '',
       guardianName: '',
-      guardianTelephone: '',
-      paymentType: ''
+      guardianTelephone: ''
     });
     setCalculatedPrice(0);
     setShowForm(false);
@@ -151,10 +148,40 @@ const StudentsPage = () => {
     setError('');
     setLoading(true);
 
-    // Validate required fields
-    if (!formData.name || !formData.studentId || !formData.email || 
-        !formData.birthday || !formData.gender || !formData.mobile || !formData.paymentType) {
-      setError('Please fill all required fields');
+    // Trim and validate required fields
+    const trimmedName = (formData.name || '').trim();
+    const trimmedStudentId = (formData.studentId || '').trim();
+    const trimmedEmail = (formData.email || '').trim();
+    const trimmedMobile = (formData.mobile || '').trim();
+
+    // Validate required fields with specific error messages
+    if (!trimmedName) {
+      setError('Please enter student name');
+      setLoading(false);
+      return;
+    }
+    if (!trimmedStudentId) {
+      setError('Please enter student ID');
+      setLoading(false);
+      return;
+    }
+    if (!trimmedEmail) {
+      setError('Please enter email address');
+      setLoading(false);
+      return;
+    }
+    if (!formData.birthday) {
+      setError('Please select birthday');
+      setLoading(false);
+      return;
+    }
+    if (!formData.gender) {
+      setError('Please select gender');
+      setLoading(false);
+      return;
+    }
+    if (!trimmedMobile) {
+      setError('Please enter mobile number');
       setLoading(false);
       return;
     }
@@ -173,18 +200,17 @@ const StudentsPage = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: formData.name,
-          studentId: formData.studentId,
-          email: formData.email,
+          name: trimmedName,
+          studentId: trimmedStudentId,
+          email: trimmedEmail,
           birthday: formData.birthday,
           gender: formData.gender,
-          mobile: formData.mobile,
+          mobile: trimmedMobile,
           subjects: formData.selectedSubjects,
           hasSpecialNeeds: formData.hasSpecialNeeds,
-          specialNeedsDetails: formData.hasSpecialNeeds ? formData.specialNeedsDetails : undefined,
-          guardianName: formData.hasSpecialNeeds ? formData.guardianName : undefined,
-          guardianTelephone: formData.hasSpecialNeeds ? formData.guardianTelephone : undefined,
-          paymentType: formData.paymentType
+          specialNeedsDetails: formData.hasSpecialNeeds ? (formData.specialNeedsDetails || '').trim() : undefined,
+          guardianName: formData.hasSpecialNeeds ? (formData.guardianName || '').trim() : undefined,
+          guardianTelephone: formData.hasSpecialNeeds ? (formData.guardianTelephone || '').trim() : undefined
         })
       });
 
@@ -203,14 +229,17 @@ const StudentsPage = () => {
           hasSpecialNeeds: false,
           specialNeedsDetails: '',
           guardianName: '',
-          guardianTelephone: '',
-          paymentType: ''
+          guardianTelephone: ''
         });
         setCalculatedPrice(0);
         setEditingStudent(null);
         setShowForm(false);
+        setError('');
       } else {
-        setError(data.message || `Failed to ${editingStudent ? 'update' : 'add'} student`);
+        // Show specific backend error message
+        const errorMessage = data.message || data.error || `Failed to ${editingStudent ? 'update' : 'add'} student`;
+        setError(errorMessage);
+        console.error('Student submission error:', data);
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -272,7 +301,6 @@ const StudentsPage = () => {
         student.email,
         student.gender,
         student.mobile,
-        student.paymentType,
         getSubjectNames(student.subjects)
       ]
         .filter(Boolean)
@@ -295,7 +323,6 @@ const StudentsPage = () => {
       'Mobile',
       'Subjects',
       'Total Price (LKR)',
-      'Payment Type',
       'Special Needs',
       'Guardian Name',
       'Guardian Telephone'
@@ -312,7 +339,6 @@ const StudentsPage = () => {
       student.totalPrice !== undefined && student.totalPrice !== null
         ? student.totalPrice
         : 0,
-      student.paymentType || '',
       student.hasSpecialNeeds ? 'Yes' : 'No',
       student.guardianName || '',
       student.guardianTelephone || ''
@@ -470,7 +496,7 @@ const StudentsPage = () => {
                       <option value="" disabled>Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
-                      <option value="Other">Other</option>
+      
                     </select>
                   </div>
 
@@ -569,21 +595,6 @@ const StudentsPage = () => {
                   </>
                 )}
 
-                <div className="form-group">
-                  <label htmlFor="paymentType">Payment Type <span className="required">*</span></label>
-                  <select
-                    id="paymentType"
-                    name="paymentType"
-                    value={formData.paymentType}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="" disabled>Select Payment Type</option>
-                    <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                  </select>
-                </div>
-
                 <div className="form-actions">
                   <button 
                     type="button" 
@@ -624,7 +635,6 @@ const StudentsPage = () => {
                     <th>Mobile</th>
                     <th>Subjects</th>
                     <th>Total Price</th>
-                    <th>Payment Type</th>
                     <th>Special Needs</th>
                     <th>Guardian</th>
                     <th>Actions</th>
@@ -641,7 +651,6 @@ const StudentsPage = () => {
                       <td>{student.mobile}</td>
                       <td>{getSubjectNames(student.subjects)}</td>
                       <td>LKR {student.totalPrice?.toFixed(2) || '0.00'}</td>
-                      <td><span className={`payment-badge ${student.paymentType}`}>{student.paymentType}</span></td>
                       <td>{student.hasSpecialNeeds ? 'Yes' : 'No'}</td>
                       <td>
                         {student.hasSpecialNeeds && student.guardianName ? (

@@ -17,6 +17,7 @@ import incomeRoutes from './routes/incomeRoutes.js';
 import extraIncomeRoutes from './routes/extraIncomeRoutes.js';
 import marksRoutes from './routes/marksRoutes.js';
 import attemptRoutes from './routes/attemptRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,6 +80,7 @@ app.use('/api/income', incomeRoutes);
 app.use('/api/extra-income', extraIncomeRoutes);
 app.use('/api/marks', marksRoutes);
 app.use('/api/attempts', attemptRoutes);
+app.use('/api/payments', paymentRoutes);
 
 // Connect to Database
 connectDB();

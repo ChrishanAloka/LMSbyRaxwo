@@ -3,8 +3,8 @@
   background: #e8e8e8;
   padding: 0.5rem 1rem;
   display: flex;
-  justify-content: flex-end;
   align-items: center;
+  gap: 0.75rem;
   border-bottom: 1px solid #E5E7EB;
 }
 
@@ -12,6 +12,46 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  margin-left: auto;
+}
+
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: none;
+  background: white;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  padding: 0;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.hamburger-btn span {
+  display: block;
+  height: 2px;
+  width: 20px;
+  background: #1f2937;
+  border-radius: 999px;
+  transition: transform 0.2s ease;
+}
+
+.hamburger-btn:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.18);
+  transform: translateY(-1px);
+}
+
+.hamburger-btn:focus {
+  outline: 3px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 3px;
+}
+
+.hamburger-btn:active {
+  transform: scale(0.97);
 }
 
 .icon-btn {
@@ -73,7 +113,6 @@
 @media (max-width: 480px) {
   .topbar {
     padding: 0.5rem 0.75rem;
-    justify-content: space-between;
   }
 
   .topbar-right {
@@ -96,5 +135,12 @@
     height: 24px;
   }
 }
+
+@media (max-width: 1024px) {
+  .hamburger-btn {
+    display: flex;
+  }
+}
+
 
 
