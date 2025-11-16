@@ -53,10 +53,6 @@ const LoginPage = () => {
     }
   };
 
-  const handleBackToHome = () => {
-    navigate('/');
-  };
-
   return (
     <div className="login-page">
       <div className="login-container">
@@ -100,12 +96,6 @@ const LoginPage = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
-
-        <div className="login-form">
-          <button onClick={handleBackToHome} className="back-to-home-button">
-            Back to Home
-          </button>
-        </div>
 
         {/* <div className="login-footer">
           <p>Don't have an account? Contact your system administrator</p>
