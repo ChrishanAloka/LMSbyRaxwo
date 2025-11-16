@@ -1,0 +1,490 @@
+.students-page {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+}
+
+.students-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.students-content {
+  flex: 1;
+  padding: 0.75rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.students-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.students-header h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.students-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.students-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.students-search input {
+  padding: 0.55rem 2.2rem 0.55rem 0.75rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  min-width: 220px;
+  transition: border-color 0.2s ease;
+}
+
+.students-search input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.search-clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 1.1rem;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.search-clear-btn:hover {
+  color: #4b5563;
+}
+
+.report-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  font-size: 0.8125rem;
+}
+
+.report-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.report-btn:disabled {
+  background: #bfdbfe;
+  color: #e0f2fe;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.add-student-btn {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.8125rem;
+}
+
+.add-student-btn:hover {
+  background: #16a34a;
+}
+
+.student-form-container {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.student-form-container h2 {
+  margin-bottom: 1rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.student-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #1f2937;
+  font-size: 0.875rem;
+}
+
+.form-group .required {
+  color: #dc2626;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.625rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #22c55e;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #22c55e;
+}
+
+.subjects-selection {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.75rem;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #f9fafb;
+}
+
+.subjects-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.subject-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.subject-checkbox-item:hover {
+  background: #f3f4f6;
+}
+
+.subject-checkbox-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #22c55e;
+}
+
+.no-subjects {
+  color: #9ca3af;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.price-display {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #f0fdf4;
+  border: 2px solid #22c55e;
+  border-radius: 8px;
+  color: #166534;
+  font-size: 0.875rem;
+}
+
+.price-display strong {
+  font-size: 1rem;
+}
+
+.error-message {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  border: 1px solid #fecaca;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.cancel-btn {
+  background: #f3f4f6;
+  color: #4b5563;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #e5e7eb;
+}
+
+.submit-btn {
+  background: #22c55e;
+  color: white;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover:not(:disabled) {
+  background: #16a34a;
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.students-table {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow-x: auto;
+}
+
+.students-table table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1200px;
+}
+
+.students-table thead {
+  background: #f9fafb;
+}
+
+.students-table th {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.students-table td {
+  padding: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.payment-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.payment-badge.cash {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.payment-badge.card {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.guardian-phone {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.edit-btn {
+  background: #dbeafe;
+  color: #1e40af;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+
+.edit-btn:hover {
+  background: #bfdbfe;
+}
+
+.delete-btn {
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+}
+
+.delete-btn:hover {
+  background: #fecaca;
+}
+
+.students-table td button {
+  margin: 0 0.25rem;
+}
+
+.empty-state {
+  padding: 1.5rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+  .students-page {
+    flex-direction: column;
+  }
+
+  .students-main-content {
+    width: 100%;
+  }
+
+  .students-content {
+    padding: 1rem;
+  }
+
+  .students-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .students-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .students-table {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .students-content {
+    padding: 0.75rem;
+  }
+
+  .students-header {
+    gap: 0.75rem;
+  }
+
+  .student-form-container {
+    padding: 0.875rem;
+  }
+
+  .student-form {
+    gap: 0.625rem;
+  }
+
+  .students-table table {
+    min-width: 560px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .form-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .students-content {
+    padding: 0.5rem;
+  }
+
+  .student-form-container {
+    padding: 0.75rem;
+  }
+
+  .add-student-btn {
+    width: 100%;
+  }
+}
+
