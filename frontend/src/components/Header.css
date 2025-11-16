@@ -193,6 +193,50 @@
   }
 }
 
+.user-icon {
+  cursor: pointer;
+  color: #4b5563;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.user-icon:hover {
+  color: #22c55e;
+}
+
+.header-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  /* Remove justify-content: space-between */
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 05px; /* Adjust this to control space between search and user icon */
+  margin-left: 5px; /* Space between logo and search */
+}
+
+/* Keep existing .search-container styles */
+.search-container {
+  max-width: 500px;
+  /* Remove margin here — it’s now handled by gap/margin in .header-right */
+}
+
+/* Optional: reduce search input width slightly if needed on smaller screens */
+@media (max-width: 1024px) {
+  .search-container {
+    max-width: 350px;
+  }
+}
+
 
 
 
