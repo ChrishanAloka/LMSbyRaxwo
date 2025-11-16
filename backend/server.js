@@ -82,10 +82,24 @@ app.use('/api/marks', marksRoutes);
 app.use('/api/attempts', attemptRoutes);
 app.use('/api/payments', paymentRoutes);
 
-// Connect to Database
-connectDB();
+// // Connect to Database
+// connectDB();
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server Started on http://localhost:${PORT}`);
-});
+// // Start server
+// app.listen(PORT, () => {
+//   console.log(`Server Started on http://localhost:${PORT}`);
+// });
+
+const startServer = async () => {
+  try {
+    await connectDB(); // ✅ Wait for DB connection
+    app.listen(PORT, () => {
+      console.log(`✅ Server Started on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('❌ Failed to start server due to database error:', err);
+    process.exit(1);
+  }
+};
+
+startServer();
