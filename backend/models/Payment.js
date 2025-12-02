@@ -22,9 +22,8 @@ const paymentSchema = new mongoose.Schema({
   },
   month: {
     type: String,
-    required: [true, 'Payment month is required'],
-    enum: ['January', 'February', 'March', 'April', 'May', 'June', 
-           'July', 'August', 'September', 'October', 'November', 'December']
+    required: [true, 'Payment month is required']
+    
   },
   paymentMethod: {
     type: String,

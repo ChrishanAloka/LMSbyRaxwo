@@ -5,7 +5,17 @@ import ExtraIncome from '../models/ExtraIncome.js';
 // @access  Private
 export const getExtraIncomes = async (req, res) => {
   try {
-    const extraIncomes = await ExtraIncome.find()
+    // Get month filter from query parameters
+    const { months } = req.query;
+    let query = {};
+
+    // Parse months filter (can be single month or comma-separated months)
+    if (months) {
+      const monthArray = Array.isArray(months) ? months : months.split(',');
+      query.month = { $in: monthArray.map(m => m.trim()) };
+    }
+
+    const extraIncomes = await ExtraIncome.find(query)
       .sort({ createdAt: -1 });
     
     res.status(200).json({

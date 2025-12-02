@@ -57,7 +57,7 @@ export const createSubject = async (req, res) => {
     const { name, conductedBy, price, description } = req.body;
 
     // Validate input
-    if (!name || !conductedBy || !price || !description) {
+    if (!name || !conductedBy || !description) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
@@ -89,7 +89,7 @@ export const createSubject = async (req, res) => {
     const subject = await Subject.create({
       name,
       conductedBy,
-      price,
+      price: price || undefined,
       image,
       description
     });

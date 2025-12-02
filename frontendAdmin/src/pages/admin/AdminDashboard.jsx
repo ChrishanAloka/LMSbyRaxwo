@@ -27,8 +27,15 @@ const AdminDashboard = () => {
   const [studentsList, setStudentsList] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [roleChecked, setRoleChecked] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
 
   const token = useMemo(() => localStorage.getItem('adminToken'), []);
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -62,7 +69,7 @@ const AdminDashboard = () => {
     if (roleChecked && isAdmin) {
       fetchDashboardData();
     }
-  }, [roleChecked, isAdmin]);
+  }, [roleChecked, isAdmin, selectedMonth]);
 
   const fetchDashboardData = async () => {
     if (!isAdmin) {
@@ -79,6 +86,14 @@ const AdminDashboard = () => {
           }
         : {};
 
+      // Build query parameters for month filter
+      const incomeParams = new URLSearchParams();
+      const paymentsParams = new URLSearchParams();
+      if (selectedMonth) {
+        incomeParams.append('months', selectedMonth);
+        paymentsParams.append('month', selectedMonth);
+      }
+
       const [
         incomeResponse,
         subjectsResponse,
@@ -87,12 +102,12 @@ const AdminDashboard = () => {
         classesResponse,
         paymentsResponse
       ] = await Promise.all([
-        fetch('https://lms-f679.onrender.com/api/income/statistics', { headers }),
+        fetch(`https://lms-f679.onrender.com/api/income/statistics${incomeParams.toString() ? '?' + incomeParams.toString() : ''}`, { headers }),
         fetch('https://lms-f679.onrender.com/api/subjects', { headers }),
         fetch('https://lms-f679.onrender.com/api/students', { headers }),
         fetch('https://lms-f679.onrender.com/api/admin/employees', { headers }),
         fetch('https://lms-f679.onrender.com/api/classes?includeDeleted=false', { headers }),
-        fetch('https://lms-f679.onrender.com/api/payments', { headers })
+        fetch(`https://lms-f679.onrender.com/api/payments${paymentsParams.toString() ? '?' + paymentsParams.toString() : ''}`, { headers })
       ]);
 
       const [
@@ -290,6 +305,62 @@ const AdminDashboard = () => {
     );
   };
 
+  const handleGenerateFilteredReport = () => {
+    if (!selectedMonth) {
+      alert('Please select a month to generate a filtered report.');
+      return;
+    }
+
+    // Build report data
+    const reportData = [
+      ['Dashboard Report - Filtered by Month'],
+      [`Month: ${selectedMonth}`],
+      [`Generated: ${new Date().toISOString().slice(0, 10)}`],
+      [],
+      ['Key Metrics'],
+      ['Metric', 'Value'],
+      ['Total Earnings', `LKR ${formatCurrency(summary.totalEarnings)}`],
+      ['Total Subjects', summary.totalSubjects],
+      ['Paid Students', summary.paidStudents],
+      ['Non-paid Students', summary.unpaidStudents],
+      ['Total Employees', summary.totalEmployees],
+      [],
+      ['Top Selling Courses'],
+      ['Course Name', 'Enrollments', 'Price (LKR)', 'Revenue (LKR)'],
+      ...topCourses.map((course) => [
+        course.name || 'Unknown',
+        course.enrollmentCount || 0,
+        formatCurrency(course.price || 0),
+        formatCurrency(course.revenue || 0)
+      ]),
+      [],
+      ['Payment Statistics'],
+      ['Total Revenue from Payments', `LKR ${formatCurrency(chartSegments.total)}`]
+    ];
+
+    const csvContent = reportData
+      .map((row) =>
+        row
+          .map((cell) => {
+            const value = String(cell ?? '');
+            return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+          })
+          .join(',')
+      )
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `dashboard-report-${selectedMonth}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   const formatTime = (time) => {
     if (!time) return 'N/A';
     const [hourStr, minuteStr] = time.split(':');
@@ -441,7 +512,62 @@ const AdminDashboard = () => {
         <div className="admin-content">
           <div className="admin-header-row">
             <h1>Dashboard Overview</h1>
+            <div className="dashboard-header-actions">
+              <button
+                type="button"
+                className="filter-toggle-btn"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? 'Hide Filters' : 'Filter'}
+              </button>
+              {selectedMonth && (
+                <>
+                  <button
+                    type="button"
+                    className="clear-filter-btn"
+                    onClick={() => setSelectedMonth('')}
+                  >
+                    Clear Filter
+                  </button>
+                  <button
+                    type="button"
+                    className="filtered-report-btn"
+                    onClick={handleGenerateFilteredReport}
+                  >
+                    Generate Filtered Report
+                  </button>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Month Filter Section */}
+          {showFilters && (
+            <div className="filter-section">
+              <div className="filter-group">
+                <label>Select Month</label>
+                <div className="month-select-wrapper">
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    className="month-select"
+                  >
+                    <option value="">All Months</option>
+                    {months.map((month, index) => (
+                      <option key={index} value={month}>
+                        {month}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedMonth && (
+                    <div className="selected-month-info">
+                      <span>Filtered by: {selectedMonth}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="admin-error-banner">

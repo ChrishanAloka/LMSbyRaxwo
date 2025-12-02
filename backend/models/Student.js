@@ -38,15 +38,35 @@ const studentSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Subject'
   }],
+  subjectPrices: [{
+    subjectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0
+    }
+  }],
   hasSpecialNeeds: {
     type: Boolean,
     default: false
+  },
+  specialNeed: {
+    type: String,
+    trim: true
   },
   specialNeedsDetails: {
     type: String,
     trim: true
   },
-  guardianName: {
+  guardianFirstName: {
+    type: String,
+    trim: true
+  },
+  guardianLastName: {
     type: String,
     trim: true
   },

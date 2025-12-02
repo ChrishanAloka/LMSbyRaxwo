@@ -7,7 +7,6 @@ const CourseCard = ({
     name: "Course Title",
     title: "Course Title", // Keep for backward compatibility
     description: "Course description goes here...",
-    price: 60,
     image: "/placeholder-course.jpg",
     teacher: "Teacher Name",
     featured: false
@@ -29,7 +28,6 @@ const CourseCard = ({
           alt={courseTitle} 
           className="course-image" 
         />
-        <div className="price-badge">LKR {course.price}</div>
       </div>
 
       <div className="course-content">

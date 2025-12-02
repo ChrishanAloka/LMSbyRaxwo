@@ -1,6 +1,7 @@
 import Payment from '../models/Payment.js';
 import Student from '../models/Student.js';
 import Subject from '../models/Subject.js';
+import { sendPaymentSMS } from '../services/smsService.js';
 
 // @desc    Create a new payment
 // @route   POST /api/payments
@@ -31,8 +32,8 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    // Verify student exists
-    const student = await Student.findById(studentId);
+    // Verify student exists and get mobile number
+    const student = await Student.findById(studentId).select('name email studentId mobile');
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -63,8 +64,18 @@ export const createPayment = async (req, res) => {
 
     // Populate the payment with student and subject details
     const populatedPayment = await Payment.findById(payment._id)
-      .populate('studentId', 'name email studentId')
+      .populate('studentId', 'name email studentId mobile')
       .populate('subjects', 'name price');
+
+    // Send SMS notification
+    try {
+      console.log('Sending payment SMS to student:', student.name, 'Mobile:', student.mobile);
+      const smsResult = await sendPaymentSMS(student, populatedPayment);
+      console.log('Payment SMS result:', smsResult);
+    } catch (smsError) {
+      // Log SMS error but don't fail the request
+      console.error('Failed to send SMS notification:', smsError);
+    }
 
     res.status(201).json({
       success: true,
@@ -85,7 +96,16 @@ export const createPayment = async (req, res) => {
 // @access  Private
 export const getPayments = async (req, res) => {
   try {
-    const payments = await Payment.find()
+    // Get month filter from query parameters
+    const { month } = req.query;
+    let query = {};
+
+    // Parse month filter
+    if (month) {
+      query.month = month.trim();
+    }
+
+    const payments = await Payment.find(query)
       .populate('studentId', 'name email studentId')
       .populate('subjects', 'name price')
       .sort({ paymentDate: -1 });

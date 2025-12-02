@@ -63,25 +63,49 @@ export const createStudent = async (req, res) => {
       gender,
       mobile,
       subjects,
+      subjectPrices,
+      totalPrice,
       hasSpecialNeeds,
+      specialNeed,
       specialNeedsDetails,
-      guardianName,
+      guardianFirstName,
+      guardianLastName,
       guardianTelephone,
       paymentType
     } = req.body;
 
-    // Validate required fields
-    if (!name || !studentId || !email || !birthday || !gender || !mobile) {
+    // Validate required fields (studentId is now optional as it will be auto-generated)
+    if (!name || !email || !birthday || !gender || !mobile) {
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
       });
     }
 
+    // Auto-generate student ID if not provided
+    let finalStudentId = studentId;
+    if (!finalStudentId || finalStudentId.trim() === '') {
+      // Find the highest existing student ID with format ID####
+      const existingStudents = await Student.find({
+        studentId: { $regex: /^ID\d{4}$/ }
+      }).sort({ studentId: -1 }).limit(1);
+
+      let nextNumber = 1;
+      if (existingStudents.length > 0) {
+        // Extract the number from the highest ID (e.g., "ID0005" -> 5)
+        const lastId = existingStudents[0].studentId;
+        const lastNumber = parseInt(lastId.replace('ID', ''), 10);
+        nextNumber = lastNumber + 1;
+      }
+
+      // Format as ID#### (4 digits with leading zeros)
+      finalStudentId = `ID${String(nextNumber).padStart(4, '0')}`;
+    }
+
     // Check if student already exists
     const studentExists = await Student.findOne({
       $or: [
-        { studentId },
+        { studentId: finalStudentId },
         { email }
       ]
     });
@@ -93,28 +117,41 @@ export const createStudent = async (req, res) => {
       });
     }
 
-    // Calculate total price if subjects are provided
-    let totalPrice = 0;
-    if (subjects && subjects.length > 0) {
-      const subjectDocs = await Subject.find({ _id: { $in: subjects } });
-      totalPrice = subjectDocs.reduce((sum, subject) => sum + (subject.price || 0), 0);
+    // Process subjectPrices: calculate totalPrice from subjectPrices if provided
+    let finalSubjectPrices = [];
+    let finalTotalPrice = 0;
+
+    if (subjectPrices && Array.isArray(subjectPrices) && subjectPrices.length > 0) {
+      // Use subjectPrices to calculate total
+      // Use parseFloat to preserve exact decimal values
+      finalSubjectPrices = subjectPrices.map(sp => ({
+        subjectId: sp.subjectId,
+        price: parseFloat(sp.price) || 0
+      }));
+      finalTotalPrice = finalSubjectPrices.reduce((sum, sp) => sum + sp.price, 0);
+    } else if (totalPrice !== undefined) {
+      // Fallback: use provided totalPrice if subjectPrices not provided
+      finalTotalPrice = Number(totalPrice) || 0;
     }
 
     // Create student
     const student = await Student.create({
       name,
-      studentId,
+      studentId: finalStudentId,
       email,
       birthday,
       gender,
       mobile,
       subjects: subjects || [],
+      subjectPrices: finalSubjectPrices,
       hasSpecialNeeds: hasSpecialNeeds || false,
+      specialNeed: hasSpecialNeeds ? specialNeed : undefined,
       specialNeedsDetails: hasSpecialNeeds ? specialNeedsDetails : undefined,
-      guardianName: hasSpecialNeeds ? guardianName : undefined,
+      guardianFirstName: hasSpecialNeeds ? guardianFirstName : undefined,
+      guardianLastName: hasSpecialNeeds ? guardianLastName : undefined,
       guardianTelephone: hasSpecialNeeds ? guardianTelephone : undefined,
       paymentType: paymentType || undefined,
-      totalPrice
+      totalPrice: finalTotalPrice
     });
 
     // Populate subjects before sending response
@@ -146,9 +183,13 @@ export const updateStudent = async (req, res) => {
       gender,
       mobile,
       subjects,
+      subjectPrices,
+      totalPrice,
       hasSpecialNeeds,
+      specialNeed,
       specialNeedsDetails,
-      guardianName,
+      guardianFirstName,
+      guardianLastName,
       guardianTelephone,
       paymentType
     } = req.body;
@@ -183,17 +224,6 @@ export const updateStudent = async (req, res) => {
       }
     }
 
-    // Calculate total price if subjects are provided
-    let totalPrice = student.totalPrice;
-    if (subjects !== undefined) {
-      if (subjects.length > 0) {
-        const subjectDocs = await Subject.find({ _id: { $in: subjects } });
-        totalPrice = subjectDocs.reduce((sum, subject) => sum + (subject.price || 0), 0);
-      } else {
-        totalPrice = 0;
-      }
-    }
-
     // Update fields
     if (name) student.name = name;
     if (studentId) student.studentId = studentId;
@@ -203,11 +233,26 @@ export const updateStudent = async (req, res) => {
     if (mobile) student.mobile = mobile;
     if (subjects !== undefined) {
       student.subjects = subjects;
-      student.totalPrice = totalPrice;
     }
+    
+    // Process subjectPrices: calculate totalPrice from subjectPrices if provided
+    if (subjectPrices !== undefined && Array.isArray(subjectPrices) && subjectPrices.length > 0) {
+      // Use parseFloat to preserve exact decimal values
+      student.subjectPrices = subjectPrices.map(sp => ({
+        subjectId: sp.subjectId,
+        price: parseFloat(sp.price) || 0
+      }));
+      student.totalPrice = student.subjectPrices.reduce((sum, sp) => sum + sp.price, 0);
+    } else if (totalPrice !== undefined) {
+      // Fallback: use provided totalPrice if subjectPrices not provided
+      student.totalPrice = Number(totalPrice);
+    }
+    
     if (hasSpecialNeeds !== undefined) student.hasSpecialNeeds = hasSpecialNeeds;
+    if (specialNeed !== undefined) student.specialNeed = specialNeed;
     if (specialNeedsDetails !== undefined) student.specialNeedsDetails = specialNeedsDetails;
-    if (guardianName !== undefined) student.guardianName = guardianName;
+    if (guardianFirstName !== undefined) student.guardianFirstName = guardianFirstName;
+    if (guardianLastName !== undefined) student.guardianLastName = guardianLastName;
     if (guardianTelephone !== undefined) student.guardianTelephone = guardianTelephone;
     if (paymentType) student.paymentType = paymentType;
 

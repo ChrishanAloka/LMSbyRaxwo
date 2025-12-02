@@ -36,6 +36,23 @@ const employeeSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
+  monthlyCommissions: [{
+    month: {
+      type: String,
+      required: true,
+      enum: ['January', 'February', 'March', 'April', 'May', 'June', 
+             'July', 'August', 'September', 'October', 'November', 'December']
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   permissions: {
     Dashboard: { type: Boolean, default: false },
     Employee: { type: Boolean, default: false },

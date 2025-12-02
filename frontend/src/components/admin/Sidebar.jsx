@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import './Sidebar.css';
+import logo from '../../assets/logo.png';
 import dashboardIcon from '../../assets/dashboard.png';
 import employeeIcon from '../../assets/employee.png';
 import studentsIcon from '../../assets/students.png';
@@ -11,6 +12,7 @@ import salaryIcon from '../../assets/salary.png';
 import incomeIcon from '../../assets/income.png';
 import extraIncomeIcon from '../../assets/extraincome.png';
 import marksIcon from '../../assets/marks.png';
+import examIcon from '../../assets/exam.png';
 import paymentIcon from '../../assets/payment.png';
 import logoutIcon from '../../assets/logout.png';
 
@@ -31,6 +33,7 @@ const Sidebar = () => {
     { name: "Extra Income", icon: extraIncomeIcon, path: "/admin/extra-income" },
     { name: "Finance", icon: incomeIcon, path: "/admin/income" },
     { name: "Marks", icon: marksIcon, path: "/admin/marks" },
+    { name: "Exam", icon: examIcon, path: "/admin/exam" },
   ];
 
   // Get user type and permissions
@@ -96,7 +99,8 @@ const Sidebar = () => {
     <>
       <aside className={`sidebar ${isMobileOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar-logo">
-          <span className="logo-text">Learning Platform</span>
+          <img src={logo} alt="Wisdom Institute Logo" className="logo-image" />
+          <span className="logo-text">WISDOM INSTITUTE</span>
         </div>
 
         <nav className="sidebar-nav">

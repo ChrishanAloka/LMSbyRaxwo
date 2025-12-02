@@ -20,16 +20,25 @@ const ExtraIncomePage = () => {
   const [editingId, setEditingId] = useState('');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonths, setSelectedMonths] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   const token = localStorage.getItem('adminToken');
 
   useEffect(() => {
     fetchExtraIncomes();
-  }, []);
+  }, [selectedMonths]);
 
   const fetchExtraIncomes = async () => {
     try {
-      const res = await fetch(API_BASE, {
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (selectedMonths.length > 0) {
+        params.append('months', selectedMonths.join(','));
+      }
+
+      const url = `${API_BASE}${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -137,25 +146,45 @@ const ExtraIncomePage = () => {
     setError('');
   };
 
-  const totalAmount = extraIncomes.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const handleMonthToggle = (month) => {
+    setSelectedMonths(prev => {
+      if (prev.includes(month)) {
+        return prev.filter(m => m !== month);
+      } else {
+        return [...prev, month];
+      }
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSelectedMonths([]);
+  };
 
   const filteredExtraIncomes = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) {
-      return extraIncomes;
+    let filtered = extraIncomes;
+    
+    // Apply search term filter
+    if (term) {
+      filtered = filtered.filter((item) =>
+        [
+          item.title,
+          item.description,
+          item.year?.toString(),
+          item.month,
+          item.amount?.toString()
+        ]
+          .filter(Boolean)
+          .some((value) => value.toLowerCase().includes(term))
+      );
     }
-    return extraIncomes.filter((item) =>
-      [
-        item.title,
-        item.description,
-        item.year?.toString(),
-        item.month,
-        item.amount?.toString()
-      ]
-        .filter(Boolean)
-        .some((value) => value.toLowerCase().includes(term))
-    );
+    
+    return filtered;
   }, [extraIncomes, searchTerm]);
+
+  const totalAmount = React.useMemo(() => {
+    return filteredExtraIncomes.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  }, [filteredExtraIncomes]);
 
   const handleGenerateReport = () => {
     if (!filteredExtraIncomes.length) {
@@ -201,6 +230,61 @@ const ExtraIncomePage = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleGenerateFilteredReport = () => {
+    if (selectedMonths.length === 0) {
+      alert('Please select at least one month to generate a filtered report.');
+      return;
+    }
+
+    if (!filteredExtraIncomes.length) {
+      alert('No extra income records available to generate a report.');
+      return;
+    }
+
+    // Build filter info for report
+    const filterText = `\nFiltered by: Months: ${selectedMonths.join(', ')}\n`;
+
+    const headers = [
+      'Title',
+      'Description',
+      'Amount (LKR)',
+      'Year',
+      'Month'
+    ];
+
+    const rows = filteredExtraIncomes.map((item) => [
+      item.title || '',
+      item.description || '',
+      item.amount ?? 0,
+      item.year || '',
+      item.month || ''
+    ]);
+
+    const csvContent = [
+      `Extra Income Report - Filtered by Month(s) - ${new Date().toISOString().slice(0, 10)}${filterText}`,
+      ...headers,
+      ...rows.map((row) =>
+        row
+          .map((cell) => {
+            const value = String(cell ?? '');
+            return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+          })
+          .join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `extra-income-report-filtered-${selectedMonths.join('-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="extra-income-page">
       <Sidebar />
@@ -231,12 +315,29 @@ const ExtraIncomePage = () => {
               </div>
               <button
                 type="button"
+                className="filter-toggle-btn"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? 'Hide Filters' : 'Filter'}
+              </button>
+              <button
+                type="button"
                 className="report-btn"
                 onClick={handleGenerateReport}
                 disabled={filteredExtraIncomes.length === 0}
               >
                 Generate Report
               </button>
+              {selectedMonths.length > 0 && (
+                <button
+                  type="button"
+                  className="filtered-report-btn"
+                  onClick={handleGenerateFilteredReport}
+                  disabled={filteredExtraIncomes.length === 0}
+                >
+                  Generate Filtered Report
+                </button>
+              )}
               <button 
                 className="add-extra-income-btn" 
                 onClick={() => {
@@ -251,6 +352,46 @@ const ExtraIncomePage = () => {
               </button>
             </div>
           </div>
+
+          {/* Month Filter Section */}
+          {showFilters && (
+            <div className="filter-section">
+              <div className="filter-header-row">
+                {selectedMonths.length > 0 && (
+                  <button
+                    type="button"
+                    className="clear-filter-btn"
+                    onClick={handleClearFilters}
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+
+              <div className="filter-group">
+                <label>Select Month(s)</label>
+                <div className="months-filter">
+                  <div className="months-checkbox-grid">
+                    {monthOptions.map((month, index) => (
+                      <label key={index} className="month-checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={selectedMonths.includes(month)}
+                          onChange={() => handleMonthToggle(month)}
+                        />
+                        <span>{month}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {selectedMonths.length > 0 && (
+                    <div className="selected-months-info">
+                      <span>{selectedMonths.length} month{selectedMonths.length !== 1 ? 's' : ''} selected: {selectedMonths.join(', ')}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {showForm && (
             <div className="extra-income-form-container">

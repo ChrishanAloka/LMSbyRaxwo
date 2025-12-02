@@ -18,6 +18,7 @@ const ClassesViewPage = () => {
   const [attemptCounts, setAttemptCounts] = useState({});
   const [showAttemptsModal, setShowAttemptsModal] = useState(false);
   const [selectedClassAttempts, setSelectedClassAttempts] = useState([]);
+  const [selectedClassInfo, setSelectedClassInfo] = useState(null);
   const [loadingAttempts, setLoadingAttempts] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
@@ -388,6 +389,13 @@ const ClassesViewPage = () => {
     setShowAttemptsModal(true);
     setLoadingAttempts(true);
     setSelectedClassAttempts([]);
+    setSelectedClassInfo(null);
+
+    // Find class information from the classes array
+    const classInfo = classes.find(c => c._id === classId);
+    if (classInfo) {
+      setSelectedClassInfo(classInfo);
+    }
 
     try {
       // Get all attempts (active, left, and attendance status) - include all for attendance view
@@ -433,6 +441,66 @@ const ClassesViewPage = () => {
       minute: '2-digit',
       hour12: true
     });
+  };
+
+  // Generate class attendance report (CSV)
+  const handleGenerateClassAttendanceReport = () => {
+    if (!selectedClassAttempts || selectedClassAttempts.length === 0 || !selectedClassInfo) {
+      alert('No attendance data available to generate report');
+      return;
+    }
+
+    const subjectName = selectedClassInfo.subjectId?.name || 'Unknown Subject';
+    const teacherName = selectedClassInfo.teacherId?.name || 'Unknown Teacher';
+    const classDate = selectedClassInfo.date || 'N/A';
+    const classTime = selectedClassInfo.time || 'N/A';
+    const classStatus = selectedClassInfo.status || 'N/A';
+
+    // Calculate statistics
+    const totalStudents = selectedClassAttempts.length;
+    const attendedCount = selectedClassAttempts.filter(a => a.attendance === 'attended').length;
+    const absentCount = selectedClassAttempts.filter(a => a.attendance === 'absent').length;
+    const pendingCount = selectedClassAttempts.filter(a => a.attendance === 'pending' || !a.attendance).length;
+
+    // Create CSV content
+    let csvContent = `Class Attendance Report\n`;
+    csvContent += `\n`;
+    csvContent += `Class Information\n`;
+    csvContent += `Subject,${subjectName}\n`;
+    csvContent += `Teacher,${teacherName}\n`;
+    csvContent += `Date,${classDate}\n`;
+    csvContent += `Time,${classTime}\n`;
+    csvContent += `Status,${classStatus}\n`;
+    csvContent += `\n`;
+    csvContent += `Attendance Statistics\n`;
+    csvContent += `Total Students,${totalStudents}\n`;
+    csvContent += `Attended,${attendedCount}\n`;
+    csvContent += `Absent,${absentCount}\n`;
+    csvContent += `Pending,${pendingCount}\n`;
+    csvContent += `\n`;
+    csvContent += `Student Details\n`;
+    csvContent += `Student ID,Student Name,Email,Attempted Time\n`;
+
+    selectedClassAttempts.forEach((attempt) => {
+      const studentId = attempt.studentId || 'N/A';
+      const studentName = attempt.studentName || 'N/A';
+      const email = attempt.studentEmail || 'N/A';
+      const attemptedTime = formatDateTime(attempt.createdAt);
+      
+      csvContent += `${studentId},${studentName},${email},${attemptedTime}\n`;
+    });
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = `Class_Attendance_${subjectName}_${classDate}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = fileName.replace(/[^a-z0-9]/gi, '_');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   const filteredClasses = useMemo(() => {
@@ -642,9 +710,9 @@ const ClassesViewPage = () => {
                               <button 
                                 className="remove-class-btn-small"
                                 onClick={() => handleRemoveClass(classItem._id)}
-                                title="Remove Class Permanently"
+                                title="Drop Record Permanently"
                               >
-                                Remove
+                                Drop Record
                               </button>
                             </div>
                           ) : classItem.status === 'completed' ? (
@@ -659,9 +727,9 @@ const ClassesViewPage = () => {
                               <button 
                                 className="delete-class-btn-small"
                                 onClick={() => handleDeleteClass(classItem._id)}
-                                title="Delete Class"
+                                title="Drop Record"
                               >
-                                Delete
+                                Drop Record
                               </button>
                             </div>
                           ) : classItem.status === 'scheduled' ? (
@@ -683,9 +751,9 @@ const ClassesViewPage = () => {
                               <button 
                                 className="delete-class-btn-small"
                                 onClick={() => handleDeleteClass(classItem._id)}
-                                title="Delete Class"
+                                title="Drop Record"
                               >
-                                Delete
+                                Drop Record
                               </button>
                             </div>
                           ) : (
@@ -707,9 +775,9 @@ const ClassesViewPage = () => {
                               <button 
                                 className="delete-class-btn-small"
                                 onClick={() => handleDeleteClass(classItem._id)}
-                                title="Delete Class"
+                                title="Drop Record"
                               >
-                                Delete
+                                Drop Record
                               </button>
                             </div>
                           )}
@@ -804,6 +872,13 @@ const ClassesViewPage = () => {
         <div className="modal-overlay" onClick={() => setShowAttemptsModal(false)}>
           <div className="modal-content attempts-modal" onClick={(e) => e.stopPropagation()}>
             <h2>Student Attendance</h2>
+            {selectedClassInfo && (
+              <div className="class-info-header">
+                <p><strong>Subject:</strong> {selectedClassInfo.subjectId?.name || 'N/A'}</p>
+                <p><strong>Teacher:</strong> {selectedClassInfo.teacherId?.name || 'N/A'}</p>
+                <p><strong>Date:</strong> {selectedClassInfo.date || 'N/A'} | <strong>Time:</strong> {selectedClassInfo.time || 'N/A'}</p>
+              </div>
+            )}
             {loadingAttempts ? (
               <div className="empty-state">
                 <p>Loading attempts...</p>
@@ -821,7 +896,6 @@ const ClassesViewPage = () => {
                       <th>Student Name</th>
                       <th>Email</th>
                       <th>Attempted Time</th>
-                      <th>Attendance</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -831,16 +905,6 @@ const ClassesViewPage = () => {
                         <td>{attempt.studentName}</td>
                         <td>{attempt.studentEmail || 'N/A'}</td>
                         <td>{formatDateTime(attempt.createdAt)}</td>
-                        <td>
-                          {attempt.attendance ? (
-                            <span className={`attendance-badge attendance-${attempt.attendance}`}>
-                              {attempt.attendance === 'attended' ? 'Attended' : 
-                               attempt.attendance === 'absent' ? 'Absent' : 'Pending'}
-                            </span>
-                          ) : (
-                            <span className="attendance-badge attendance-pending">Pending</span>
-                          )}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -848,6 +912,13 @@ const ClassesViewPage = () => {
               </div>
             )}
             <div className="modal-actions">
+              <button 
+                className="generate-report-btn" 
+                onClick={handleGenerateClassAttendanceReport}
+                disabled={!selectedClassAttempts || selectedClassAttempts.length === 0 || !selectedClassInfo}
+              >
+                Generate Report
+              </button>
               <button className="cancel-btn" onClick={() => setShowAttemptsModal(false)}>
                 Close
               </button>

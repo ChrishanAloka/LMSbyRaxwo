@@ -15,6 +15,7 @@ import IncomePage from './pages/admin/IncomePage';
 import ExtraIncomePage from './pages/admin/ExtraIncomePage';
 import MarksPage from './pages/admin/MarksPage';
 import PaymentPage from './pages/admin/PaymentPage';
+import ExamPage from './pages/admin/ExamPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 
@@ -125,6 +126,14 @@ const App = () => {
             element={
               <ProtectedRoute>
                 <MarksPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/exam" 
+            element={
+              <ProtectedRoute>
+                <ExamPage />
               </ProtectedRoute>
             } 
           />

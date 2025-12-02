@@ -320,12 +320,12 @@ const ClassesPage = () => {
                         >
                           Attempted
                         </button>
-                        <button 
+                        {/* <button 
                           className="leave-class-btn-page"
                           onClick={() => handleLeaveClass(classItem._id, attemptedClasses[classItem._id].studentId)}
                         >
                           Leave Class
-                        </button>
+                        </button> */}
                       </>
                     ) : (
                       <button 

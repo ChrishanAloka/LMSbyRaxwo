@@ -5,7 +5,8 @@ import {
   getClassAttempts,
   checkAttempt,
   getStudentAttempts,
-  getAllAttemptsReport
+  getAllAttemptsReport,
+  getStudentWeeklyAttendance
 } from '../controllers/attemptController.js';
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.get('/class/:classId', getClassAttempts);
 router.get('/check/:classId/:studentId', checkAttempt);
 router.get('/student/:studentId', getStudentAttempts);
 router.get('/report', getAllAttemptsReport); // Get all attempts for reporting
+router.get('/attendance/weekly', getStudentWeeklyAttendance); // Get student weekly attendance
 
 export default router;
 

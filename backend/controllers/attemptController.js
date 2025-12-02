@@ -1,6 +1,7 @@
 import Attempt from '../models/Attempt.js';
 import Class from '../models/Class.js';
 import Student from '../models/Student.js';
+import { sendClassAttemptSMS } from '../services/smsService.js';
 
 // @desc    Attempt a class (student joins)
 // @route   POST /api/attempts
@@ -17,8 +18,8 @@ export const attemptClass = async (req, res) => {
       });
     }
 
-    // Verify class exists
-    const classInstance = await Class.findById(classId);
+    // Verify class exists and populate subject
+    const classInstance = await Class.findById(classId).populate('subjectId', 'name');
     if (!classInstance) {
       return res.status(404).json({
         success: false,
@@ -26,14 +27,33 @@ export const attemptClass = async (req, res) => {
       });
     }
 
-    // Verify student exists
-    const student = await Student.findOne({ studentId: studentId });
+    // Verify student exists and include mobile field
+    const student = await Student.findOne({ studentId: studentId }).select('name email studentId mobile');
     if (!student) {
       return res.status(404).json({
         success: false,
         message: 'Invalid student ID'
       });
     }
+    
+    // Ensure mobile number exists
+    if (!student.mobile || student.mobile.trim() === '') {
+      console.error('❌ Student mobile number is missing or empty:', {
+        studentId: student.studentId,
+        name: student.name,
+        mobile: student.mobile
+      });
+      // Continue without SMS - don't fail the request
+    }
+    
+    console.log('Student found for SMS:', { 
+      name: student.name, 
+      studentId: student.studentId,
+      mobile: student.mobile,
+      mobileType: typeof student.mobile,
+      mobileLength: student.mobile ? student.mobile.length : 0,
+      mobileExists: !!student.mobile
+    });
 
     // Check if class is deleted
     if (classInstance.isDeleted) {
@@ -90,6 +110,38 @@ export const attemptClass = async (req, res) => {
         studentEmail: student.email,
         status: 'active'
       });
+
+      // Send SMS notification (only for new attempts, not reactivations)
+      try {
+        console.log('=== SMS SENDING ATTEMPT ===');
+        console.log('Student:', student.name);
+        console.log('Student ID:', student.studentId);
+        console.log('Mobile Number:', student.mobile);
+        console.log('Mobile Number Type:', typeof student.mobile);
+        console.log('Class Instance:', {
+          id: classInstance._id,
+          subjectId: classInstance.subjectId,
+          subjectName: classInstance.subjectId?.name || 'N/A'
+        });
+        
+        const smsResult = await sendClassAttemptSMS(student, classInstance);
+        
+        console.log('=== SMS RESULT ===');
+        console.log('SMS Success:', smsResult.success);
+        console.log('SMS Data:', smsResult.data);
+        console.log('SMS Error:', smsResult.error);
+        console.log('==================');
+        
+        if (!smsResult.success) {
+          console.error('SMS failed but request continues. Error:', smsResult.error);
+        }
+      } catch (smsError) {
+        // Log SMS error but don't fail the request
+        console.error('=== SMS EXCEPTION ===');
+        console.error('Failed to send SMS notification:', smsError);
+        console.error('Error Stack:', smsError.stack);
+        console.error('=====================');
+      }
     }
 
     res.status(201).json({
@@ -295,6 +347,181 @@ export const getAllAttemptsReport = async (req, res) => {
       count: attempts.length,
       stats,
       data: attempts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Get student weekly or monthly attendance by student ID or name, grouped by subject
+// @route   GET /api/attempts/attendance/weekly
+// @access  Public
+export const getStudentWeeklyAttendance = async (req, res) => {
+  try {
+    const { studentId, studentName, period = 'weekly' } = req.query;
+
+    // Validate input
+    if (!studentId && !studentName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either student ID or student name'
+      });
+    }
+
+    // Validate period
+    if (period !== 'weekly' && period !== 'monthly') {
+      return res.status(400).json({
+        success: false,
+        message: 'Period must be either "weekly" or "monthly"'
+      });
+    }
+
+    // Find student by ID or name - try both if needed
+    let student;
+    if (studentId) {
+      // First try exact match by studentId
+      student = await Student.findOne({ studentId: studentId });
+      // If not found, try case-insensitive search
+      if (!student) {
+        student = await Student.findOne({ 
+          studentId: { $regex: `^${studentId}$`, $options: 'i' } 
+        });
+      }
+    } else if (studentName) {
+      // Try searching by name first
+      student = await Student.findOne({ 
+        name: { $regex: studentName, $options: 'i' } 
+      });
+      // If not found by name, also try searching by studentId (in case user entered ID as name)
+      if (!student) {
+        student = await Student.findOne({ 
+          studentId: { $regex: `^${studentName}$`, $options: 'i' } 
+        });
+      }
+    }
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found. Please check the student ID or name and try again.'
+      });
+    }
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate, endDate;
+
+    if (period === 'weekly') {
+      // Calculate start and end of current week (Monday to Sunday)
+      const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to Monday
+      startDate = new Date(now);
+      startDate.setDate(now.getDate() + diff);
+      startDate.setHours(0, 0, 0, 0);
+      
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Calculate start and end of current month
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
+      
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    // Get all attempts for this student in the date range
+    const attempts = await Attempt.find({
+      studentId: student.studentId,
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    })
+      .populate({
+        path: 'classId',
+        select: 'subjectId teacherId date time status',
+        populate: [
+          {
+            path: 'subjectId',
+            select: 'name'
+          },
+          {
+            path: 'teacherId',
+            select: 'name'
+          }
+        ]
+      })
+      .sort({ createdAt: -1 });
+
+    // Group attempts by subject
+    const attendanceBySubject = {};
+    
+    attempts.forEach(attempt => {
+      const subjectId = attempt.classId?.subjectId?._id?.toString() || 'unknown';
+      const subjectName = attempt.classId?.subjectId?.name || 'Unknown Subject';
+      
+      if (!attendanceBySubject[subjectId]) {
+        attendanceBySubject[subjectId] = {
+          subjectId: subjectId,
+          subjectName: subjectName,
+          classes: [],
+          statistics: {
+            total: 0,
+            attended: 0,
+            absent: 0,
+            pending: 0
+          }
+        };
+      }
+      
+      attendanceBySubject[subjectId].classes.push(attempt);
+      attendanceBySubject[subjectId].statistics.total++;
+      
+      if (attempt.attendance === 'attended') {
+        attendanceBySubject[subjectId].statistics.attended++;
+      } else if (attempt.attendance === 'absent') {
+        attendanceBySubject[subjectId].statistics.absent++;
+      } else {
+        attendanceBySubject[subjectId].statistics.pending++;
+      }
+    });
+
+    // Convert to array and sort by subject name
+    const subjectsArray = Object.values(attendanceBySubject).sort((a, b) => 
+      a.subjectName.localeCompare(b.subjectName)
+    );
+
+    // Calculate overall statistics
+    const totalClasses = attempts.length;
+    const attendedCount = attempts.filter(a => a.attendance === 'attended').length;
+    const absentCount = attempts.filter(a => a.attendance === 'absent').length;
+    const pendingCount = attempts.filter(a => a.attendance === 'pending' || !a.attendance).length;
+
+    res.status(200).json({
+      success: true,
+      student: {
+        studentId: student.studentId,
+        name: student.name,
+        email: student.email
+      },
+      period: period,
+      dateRange: {
+        start: startDate.toISOString(),
+        end: endDate.toISOString()
+      },
+      overallStatistics: {
+        totalClasses,
+        attended: attendedCount,
+        absent: absentCount,
+        pending: pendingCount
+      },
+      attendanceBySubject: subjectsArray,
+      data: attempts // Keep for backward compatibility
     });
   } catch (error) {
     res.status(500).json({

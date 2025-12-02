@@ -42,10 +42,22 @@ const PaymentPage = () => {
 
   useEffect(() => {
     // Calculate total fee when selected subjects or months change
+    // Use student's subjectPrices (prices entered when student was added) instead of subject default prices
     if (formData.selectedSubjects.length > 0 && selectedStudent && formData.selectedMonths.length > 0) {
       const subjectTotal = formData.selectedSubjects.reduce((sum, subjectId) => {
+        // First try to get price from student's subjectPrices
+        if (selectedStudent.subjectPrices && Array.isArray(selectedStudent.subjectPrices)) {
+          const subjectPrice = selectedStudent.subjectPrices.find(sp => {
+            const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+            return spId === subjectId;
+          });
+          if (subjectPrice) {
+            return sum + (subjectPrice.price || 0);
+          }
+        }
+        // Fallback to subject's default price if no student-specific price found
         const subject = subjects.find(s => s._id === subjectId);
-        return sum + (subject ? subject.price : 0);
+        return sum + (subject ? (subject.price || 0) : 0);
       }, 0);
       // Multiply by number of selected months
       setTotalFee(subjectTotal * formData.selectedMonths.length);
@@ -163,13 +175,27 @@ const PaymentPage = () => {
     if (!selectedStudent || !selectedStudent.subjects) return [];
     
     return selectedStudent.subjects.map(subjectId => {
-      const subject = subjects.find(s => {
-        if (typeof subjectId === 'object' && subjectId._id) {
-          return s._id === subjectId._id;
+      const subjectIdValue = typeof subjectId === 'object' ? subjectId._id : subjectId;
+      const subject = subjects.find(s => s._id === subjectIdValue);
+      
+      if (!subject) return null;
+      
+      // Get price from student's subjectPrices if available
+      let studentPrice = null;
+      if (selectedStudent.subjectPrices && Array.isArray(selectedStudent.subjectPrices)) {
+        const subjectPrice = selectedStudent.subjectPrices.find(sp => {
+          const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+          return spId === subjectIdValue;
+        });
+        if (subjectPrice) {
+          studentPrice = subjectPrice.price;
         }
-        return s._id === subjectId;
-      });
-      return subject;
+      }
+      
+      return {
+        ...subject,
+        studentPrice: studentPrice !== null ? studentPrice : subject.price
+      };
     }).filter(Boolean);
   };
 
@@ -217,40 +243,50 @@ const PaymentPage = () => {
     }
 
     try {
-      // Calculate price per month
+      // Calculate price per month using student's subjectPrices
       const pricePerMonth = formData.selectedSubjects.reduce((sum, subjectId) => {
+        // First try to get price from student's subjectPrices
+        if (selectedStudent.subjectPrices && Array.isArray(selectedStudent.subjectPrices)) {
+          const subjectPrice = selectedStudent.subjectPrices.find(sp => {
+            const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+            return spId === subjectId;
+          });
+          if (subjectPrice) {
+            return sum + (subjectPrice.price || 0);
+          }
+        }
+        // Fallback to subject's default price if no student-specific price found
         const subject = subjects.find(s => s._id === subjectId);
-        return sum + (subject ? subject.price : 0);
+        return sum + (subject ? (subject.price || 0) : 0);
       }, 0);
 
-      // Create payment records for each selected month
-      const paymentPromises = formData.selectedMonths.map(async (month) => {
-        const paymentData = {
-          studentId: selectedStudent._id,
-          studentIdNumber: formData.studentId,
-          subjects: formData.selectedSubjects,
-          totalAmount: pricePerMonth,
-          month: month,
-          paymentMethod: formData.paymentMethod,
-          paymentDate: formData.paymentDate
-        };
+      // Create a single payment record with all selected months combined
+      // Join months with comma for multiple months
+      const monthsCombined = formData.selectedMonths.join(', ');
+      const totalAmount = pricePerMonth * formData.selectedMonths.length;
+      
+      const paymentData = {
+        studentId: selectedStudent._id,
+        studentIdNumber: formData.studentId,
+        subjects: formData.selectedSubjects,
+        totalAmount: totalAmount,
+        month: monthsCombined,
+        paymentMethod: formData.paymentMethod,
+        paymentDate: formData.paymentDate
+      };
 
-        const response = await fetch('https://lms-f679.onrender.com/api/payments', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(paymentData)
-        });
-
-        return response.json();
+      const response = await fetch('https://lms-f679.onrender.com/api/payments', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(paymentData)
       });
 
-      const results = await Promise.all(paymentPromises);
-      const failed = results.filter(r => !r.success);
+      const data = await response.json();
       
-      if (failed.length === 0) {
+      if (response.ok && data.success) {
         setSuccess(`Payment recorded successfully for ${formData.selectedMonths.length} month(s)!`);
         setFormData({
           studentId: '',
@@ -264,7 +300,7 @@ const PaymentPage = () => {
         fetchPayments(); // Refresh payments list
         setTimeout(() => setSuccess(''), 3000);
       } else {
-        setError(failed[0].message || 'Failed to record some payments');
+        setError(data.message || 'Failed to record payment');
       }
     } catch (err) {
       console.error('Error recording payment:', err);
@@ -326,10 +362,28 @@ const PaymentPage = () => {
     }
 
     try {
-      // Calculate total amount from selected subjects
+      // Calculate total amount from selected subjects using student's subjectPrices
+      const editStudent = students.find(s => {
+        if (typeof editingPayment.studentId === 'object') {
+          return s._id === editingPayment.studentId._id;
+        }
+        return s._id === editingPayment.studentId;
+      });
+      
       const editTotalFee = editFormData.selectedSubjects.reduce((sum, subjectId) => {
+        // First try to get price from student's subjectPrices
+        if (editStudent && editStudent.subjectPrices && Array.isArray(editStudent.subjectPrices)) {
+          const subjectPrice = editStudent.subjectPrices.find(sp => {
+            const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+            return spId === subjectId;
+          });
+          if (subjectPrice) {
+            return sum + (subjectPrice.price || 0);
+          }
+        }
+        // Fallback to subject's default price if no student-specific price found
         const subject = subjects.find(s => s._id === subjectId);
-        return sum + (subject ? subject.price : 0);
+        return sum + (subject ? (subject.price || 0) : 0);
       }, 0);
 
       const paymentData = {
@@ -427,13 +481,27 @@ const PaymentPage = () => {
     if (!student || !student.subjects) return [];
     
     return student.subjects.map(subjectId => {
-      const subject = subjects.find(s => {
-        if (typeof subjectId === 'object' && subjectId._id) {
-          return s._id === subjectId._id;
+      const subjectIdValue = typeof subjectId === 'object' ? subjectId._id : subjectId;
+      const subject = subjects.find(s => s._id === subjectIdValue);
+      
+      if (!subject) return null;
+      
+      // Get price from student's subjectPrices if available
+      let studentPrice = null;
+      if (student.subjectPrices && Array.isArray(student.subjectPrices)) {
+        const subjectPrice = student.subjectPrices.find(sp => {
+          const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+          return spId === subjectIdValue;
+        });
+        if (subjectPrice) {
+          studentPrice = subjectPrice.price;
         }
-        return s._id === subjectId;
-      });
-      return subject;
+      }
+      
+      return {
+        ...subject,
+        studentPrice: studentPrice !== null ? studentPrice : subject.price
+      };
     }).filter(Boolean);
   };
 
@@ -547,6 +615,9 @@ const PaymentPage = () => {
                 <div className="student-info">
                   <p><strong>Student:</strong> {selectedStudent.name}</p>
                   <p><strong>Email:</strong> {selectedStudent.email}</p>
+                  {selectedStudent.totalPrice !== undefined && selectedStudent.totalPrice !== null && (
+                    <p><strong>Total Price :</strong> LKR {selectedStudent.totalPrice.toFixed(2)}</p>
+                  )}
                 </div>
               )}
             </div>
@@ -567,7 +638,7 @@ const PaymentPage = () => {
                               checked={formData.selectedSubjects.includes(subject._id)}
                               onChange={() => handleSubjectToggle(subject._id)}
                             />
-                            <span>{subject.name} - LKR {subject.price.toFixed(2)}</span>
+                            <span>{subject.name} - LKR {(subject.studentPrice || subject.price || 0).toFixed(2)}</span>
                           </label>
                         ))}
                       </div>
@@ -798,7 +869,7 @@ const PaymentPage = () => {
                                 checked={editFormData.selectedSubjects.includes(subject._id)}
                                 onChange={() => handleEditSubjectToggle(subject._id)}
                               />
-                              <span>{subject.name} - LKR {subject.price.toFixed(2)}</span>
+                              <span>{subject.name} - LKR {(subject.studentPrice || subject.price || 0).toFixed(2)}</span>
                             </label>
                           ))}
                         </div>
@@ -808,8 +879,26 @@ const PaymentPage = () => {
                       <div className="total-fee-display">
                         <strong>
                           Total Fee: LKR {editFormData.selectedSubjects.reduce((sum, subjectId) => {
+                            const editStudent = students.find(s => {
+                              if (typeof editingPayment.studentId === 'object') {
+                                return s._id === editingPayment.studentId._id;
+                              }
+                              return s._id === editingPayment.studentId;
+                            });
+                            
+                            // First try to get price from student's subjectPrices
+                            if (editStudent && editStudent.subjectPrices && Array.isArray(editStudent.subjectPrices)) {
+                              const subjectPrice = editStudent.subjectPrices.find(sp => {
+                                const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+                                return spId === subjectId;
+                              });
+                              if (subjectPrice) {
+                                return sum + (subjectPrice.price || 0);
+                              }
+                            }
+                            // Fallback to subject's default price
                             const subject = subjects.find(s => s._id === subjectId);
-                            return sum + (subject ? subject.price : 0);
+                            return sum + (subject ? (subject.price || 0) : 0);
                           }, 0).toFixed(2)}
                         </strong>
                       </div>

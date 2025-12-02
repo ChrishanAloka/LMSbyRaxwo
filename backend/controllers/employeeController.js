@@ -106,7 +106,7 @@ export const createEmployee = async (req, res) => {
 // @access  Private
 export const updateEmployee = async (req, res) => {
   try {
-    const { name, email, password, role, status, basicSalary, commission } = req.body;
+    const { name, email, password, role, status, basicSalary, commission, monthlyCommissions } = req.body;
 
     let employee = await Employee.findById(req.params.id);
 
@@ -124,6 +124,14 @@ export const updateEmployee = async (req, res) => {
     if (status) employee.status = status;
     if (basicSalary !== undefined) employee.basicSalary = basicSalary;
     if (commission !== undefined) employee.commission = commission;
+    if (monthlyCommissions !== undefined) {
+      employee.monthlyCommissions = monthlyCommissions;
+      // Recalculate total commission from monthly commissions
+      const totalCommission = monthlyCommissions.reduce(
+        (sum, mc) => sum + (mc.amount || 0), 0
+      );
+      employee.commission = totalCommission;
+    }
     if (password) {
       // Password will be automatically hashed by the pre-save middleware
       employee.password = password;
@@ -324,12 +332,28 @@ export const updatePermissions = async (req, res) => {
 // @access  Private
 export const updateCommission = async (req, res) => {
   try {
-    const { commission } = req.body;
+    const { commission, month } = req.body;
 
     if (commission === undefined || commission < 0) {
       return res.status(400).json({
         success: false,
         message: 'Please provide a valid commission amount (>= 0)'
+      });
+    }
+
+    if (!month) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month is required'
+      });
+    }
+
+    const validMonths = ['January', 'February', 'March', 'April', 'May', 'June', 
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+    if (!validMonths.includes(month)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid month. Please provide a valid month name.'
       });
     }
 
@@ -342,16 +366,44 @@ export const updateCommission = async (req, res) => {
       });
     }
 
-    employee.commission = commission;
+    // Initialize monthlyCommissions if it doesn't exist
+    if (!employee.monthlyCommissions) {
+      employee.monthlyCommissions = [];
+    }
+
+    // Check if commission for this month already exists
+    const existingCommissionIndex = employee.monthlyCommissions.findIndex(
+      mc => mc.month === month
+    );
+
+    if (existingCommissionIndex !== -1) {
+      // Update existing commission for this month
+      employee.monthlyCommissions[existingCommissionIndex].amount = commission;
+      employee.monthlyCommissions[existingCommissionIndex].createdAt = new Date();
+    } else {
+      // Add new commission for this month
+      employee.monthlyCommissions.push({
+        month,
+        amount: commission
+      });
+    }
+
+    // Calculate total commission from all months
+    const totalCommission = employee.monthlyCommissions.reduce(
+      (sum, mc) => sum + (mc.amount || 0), 0
+    );
+    employee.commission = totalCommission;
+
     await employee.save();
 
     res.status(200).json({
       success: true,
-      message: 'Commission updated successfully',
+      message: `Commission for ${month} updated successfully`,
       data: {
         id: employee._id,
         name: employee.name,
-        commission: employee.commission
+        commission: employee.commission,
+        monthlyCommissions: employee.monthlyCommissions
       }
     });
   } catch (error) {

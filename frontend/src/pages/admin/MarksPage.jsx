@@ -16,12 +16,50 @@ const MarksPage = () => {
   const [editingMarks, setEditingMarks] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [availableSubjects, setAvailableSubjects] = useState([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   const token = localStorage.getItem('adminToken');
 
   useEffect(() => {
     fetchMarks();
+    fetchSubjects();
   }, []);
+
+  const fetchSubjects = async () => {
+    setLoadingSubjects(true);
+    try {
+      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const data = await response.json();
+      
+      if (data.success && data.data && data.data.length > 0) {
+        // Use subjects from database
+        const subjects = data.data.map(sub => ({
+          id: sub._id,
+          name: sub.name
+        }));
+        setAvailableSubjects(subjects);
+      } else {
+        // If no subjects exist, use test subjects as fallback
+        // Backend will create them when marks are submitted
+        const testSubjects = [
+          { id: 'test1', name: 'test1' },
+          { id: 'test2', name: 'test2' }
+        ];
+        setAvailableSubjects(testSubjects);
+      }
+    } catch (err) {
+      console.error('Error fetching subjects:', err);
+      // Fallback: use test subjects (backend will create them)
+      const testSubjects = [
+        { id: 'test1', name: 'test1' },
+        { id: 'test2', name: 'test2' }
+      ];
+      setAvailableSubjects(testSubjects);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  };
 
   const fetchMarks = async () => {
     try {
@@ -60,14 +98,13 @@ const MarksPage = () => {
 
       if (data.success && data.valid) {
         setValidatedStudent(data.data);
-        // Initialize subject marks array - subjects come populated from backend
-        const initialMarks = data.data.subjects.map(subject => ({
-          subjectId: typeof subject === 'object' ? subject._id : subject,
-          subjectName: typeof subject === 'object' ? subject.name : 'Loading...',
+        // Initialize with one empty subject entry
+        setSubjectMarks([{
+          subjectId: '',
+          subjectName: '',
           marks: '',
           grade: ''
-        }));
-        setSubjectMarks(initialMarks);
+        }]);
         setStudentValidationError('');
       } else {
         setStudentValidationError(data.message || 'Invalid Student ID. Student not found.');
@@ -86,7 +123,30 @@ const MarksPage = () => {
   const handleSubjectMarksChange = (index, field, value) => {
     const updatedMarks = [...subjectMarks];
     updatedMarks[index][field] = value;
+    
+    // If subject is changed, update subjectName as well
+    if (field === 'subjectId') {
+      const selectedSubject = availableSubjects.find(sub => sub.id === value);
+      updatedMarks[index].subjectName = selectedSubject ? selectedSubject.name : '';
+    }
+    
     setSubjectMarks(updatedMarks);
+  };
+
+  const handleAddSubject = () => {
+    setSubjectMarks([...subjectMarks, {
+      subjectId: '',
+      subjectName: '',
+      marks: '',
+      grade: ''
+    }]);
+  };
+
+  const handleRemoveSubject = (index) => {
+    if (subjectMarks.length > 1) {
+      const updatedMarks = subjectMarks.filter((_, i) => i !== index);
+      setSubjectMarks(updatedMarks);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -94,10 +154,19 @@ const MarksPage = () => {
     setError('');
     setLoading(true);
 
-    // Validate all subjects have marks and grade
-    const incompleteSubjects = subjectMarks.filter(sub => !sub.marks || !sub.grade);
+    // Validate all subjects have subject selected, marks and grade
+    const incompleteSubjects = subjectMarks.filter(sub => !sub.subjectId || !sub.marks || !sub.grade);
     if (incompleteSubjects.length > 0) {
-      setError('Please enter marks and grade for all subjects');
+      setError('Please select subject, enter marks and grade for all entries');
+      setLoading(false);
+      return;
+    }
+
+    // Validate no duplicate subjects
+    const subjectIds = subjectMarks.map(sub => sub.subjectId);
+    const duplicateSubjects = subjectIds.filter((id, index) => subjectIds.indexOf(id) !== index);
+    if (duplicateSubjects.length > 0) {
+      setError('Each subject can only be added once. Please remove duplicate subjects.');
       setLoading(false);
       return;
     }
@@ -166,12 +235,18 @@ const MarksPage = () => {
     });
 
     // Initialize subject marks from existing record
-    const initialMarks = marksRecord.subjects.map(sub => ({
-      subjectId: typeof sub.subjectId === 'object' ? sub.subjectId._id : sub.subjectId,
-      subjectName: typeof sub.subjectId === 'object' ? sub.subjectId.name : '',
-      marks: sub.marks.toString(),
-      grade: sub.grade
-    }));
+    const initialMarks = marksRecord.subjects.map(sub => {
+      const subjectId = typeof sub.subjectId === 'object' ? sub.subjectId._id : sub.subjectId;
+      const subjectName = typeof sub.subjectId === 'object' ? sub.subjectId.name : '';
+      // If subject is not in availableSubjects, use the subjectId as fallback
+      const foundSubject = availableSubjects.find(s => s.id === subjectId || s.name === subjectName);
+      return {
+        subjectId: foundSubject ? foundSubject.id : subjectId,
+        subjectName: foundSubject ? foundSubject.name : subjectName,
+        marks: sub.marks.toString(),
+        grade: sub.grade
+      };
+    });
     setSubjectMarks(initialMarks);
     setShowForm(true);
     setError('');
@@ -380,16 +455,39 @@ const MarksPage = () => {
                   )}
                 </div>
 
-                {validatedStudent && validatedStudent.subjects.length > 0 && (
+                {validatedStudent && (
                   <div className="subjects-marks-section">
-                    <h3>Enter Marks for Enrolled Subjects</h3>
+                    <div className="subjects-marks-header">
+                      <h3>Add Subject Marks</h3>
+                      <button
+                        type="button"
+                        className="add-subject-btn"
+                        onClick={handleAddSubject}
+                      >
+                        + Add Subject
+                      </button>
+                    </div>
                     <div className="subjects-marks-list">
                       {subjectMarks.map((subject, index) => (
                         <div key={index} className="subject-marks-item">
-                          <div className="subject-name">{subject.subjectName || 'Loading...'}</div>
+                          <div className="subject-select-group">
+                            <label>Subject <span className="required">*</span></label>
+                            <select
+                              value={subject.subjectId}
+                              onChange={(e) => handleSubjectMarksChange(index, 'subjectId', e.target.value)}
+                              required
+                            >
+                              <option value="" disabled>Select Subject</option>
+                              {availableSubjects.map(sub => (
+                                <option key={sub.id} value={sub.id}>
+                                  {sub.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                           <div className="marks-inputs">
                             <div className="marks-input-group">
-                              <label>Marks (0-100)</label>
+                              <label>Marks (0-100) <span className="required">*</span></label>
                               <input
                                 type="number"
                                 value={subject.marks}
@@ -402,7 +500,7 @@ const MarksPage = () => {
                               />
                             </div>
                             <div className="marks-input-group">
-                              <label>Grade</label>
+                              <label>Grade <span className="required">*</span></label>
                               <input
                                 type="text"
                                 value={subject.grade}
@@ -413,19 +511,23 @@ const MarksPage = () => {
                               />
                             </div>
                           </div>
+                          {subjectMarks.length > 1 && (
+                            <button
+                              type="button"
+                              className="remove-subject-btn"
+                              onClick={() => handleRemoveSubject(index)}
+                              title="Remove this subject"
+                            >
+                              ×
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {validatedStudent && validatedStudent.subjects.length === 0 && (
-                  <div className="no-subjects-message">
-                    This student has no enrolled subjects. Please enroll the student in subjects first.
-                  </div>
-                )}
-
-                {validatedStudent && validatedStudent.subjects.length > 0 && (
+                {validatedStudent && (
                   <div className="form-actions">
                     <button 
                       type="button" 

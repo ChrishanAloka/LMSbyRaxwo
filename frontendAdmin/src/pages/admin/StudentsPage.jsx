@@ -18,12 +18,14 @@ const StudentsPage = () => {
     gender: '',
     mobile: '',
     selectedSubjects: [],
+    subjectPrices: {}, // Object mapping subjectId to price
     hasSpecialNeeds: false,
+    specialNeed: '',
     specialNeedsDetails: '',
-    guardianName: '',
+    guardianFirstName: '',
+    guardianLastName: '',
     guardianTelephone: ''
   });
-  const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
   const token = localStorage.getItem('adminToken');
@@ -33,18 +35,6 @@ const StudentsPage = () => {
     fetchSubjects();
   }, []);
 
-  useEffect(() => {
-    // Calculate price when selected subjects change
-    if (formData.selectedSubjects.length > 0) {
-      const totalPrice = formData.selectedSubjects.reduce((sum, subjectId) => {
-        const subject = subjects.find(s => s._id === subjectId);
-        return sum + (subject ? subject.price : 0);
-      }, 0);
-      setCalculatedPrice(totalPrice);
-    } else {
-      setCalculatedPrice(0);
-    }
-  }, [formData.selectedSubjects, subjects]);
 
   const fetchStudents = async () => {
     try {
@@ -83,16 +73,91 @@ const StudentsPage = () => {
     setError('');
   };
 
+  // Handle mobile number input with +94 prefix
+  const handleMobileChange = (e) => {
+    let value = e.target.value;
+    
+    // Remove any non-digit characters except + at the start
+    value = value.replace(/[^\d+]/g, '');
+    
+    // If user types +94, keep it, otherwise if starts with 0, remove it
+    if (value.startsWith('+94')) {
+      // Remove +94 prefix for display, user will enter the rest
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      // Remove leading 0
+      value = value.substring(1);
+    }
+    
+    // Only allow digits after removing prefix
+    value = value.replace(/\D/g, '');
+    
+    setFormData({
+      ...formData,
+      mobile: value
+    });
+    setError('');
+  };
+
+  // Handle guardian telephone number input with +94 prefix
+  const handleGuardianTelephoneChange = (e) => {
+    let value = e.target.value;
+    
+    // Remove any non-digit characters except + at the start
+    value = value.replace(/[^\d+]/g, '');
+    
+    // If user types +94, keep it, otherwise if starts with 0, remove it
+    if (value.startsWith('+94')) {
+      // Remove +94 prefix for display, user will enter the rest
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      // Remove leading 0
+      value = value.substring(1);
+    }
+    
+    // Only allow digits after removing prefix
+    value = value.replace(/\D/g, '');
+    
+    setFormData({
+      ...formData,
+      guardianTelephone: value
+    });
+    setError('');
+  };
+
   const handleSubjectToggle = (subjectId) => {
     setFormData(prev => {
       const isSelected = prev.selectedSubjects.includes(subjectId);
+      const newSelectedSubjects = isSelected
+        ? prev.selectedSubjects.filter(id => id !== subjectId)
+        : [...prev.selectedSubjects, subjectId];
+      
+      // Remove price when unselecting, add empty price when selecting
+      const newSubjectPrices = { ...prev.subjectPrices };
+      if (isSelected) {
+        delete newSubjectPrices[subjectId];
+      } else {
+        newSubjectPrices[subjectId] = '';
+      }
+      
       return {
         ...prev,
-        selectedSubjects: isSelected
-          ? prev.selectedSubjects.filter(id => id !== subjectId)
-          : [...prev.selectedSubjects, subjectId]
+        selectedSubjects: newSelectedSubjects,
+        subjectPrices: newSubjectPrices
       };
     });
+  };
+
+  const handleSubjectPriceChange = (subjectId, price) => {
+    // Store price as string to preserve exact user input (no rounding)
+    setFormData(prev => ({
+      ...prev,
+      subjectPrices: {
+        ...prev.subjectPrices,
+        [subjectId]: price
+      }
+    }));
+    setError('');
   };
 
   const handleEdit = (student) => {
@@ -106,18 +171,75 @@ const StudentsPage = () => {
       return typeof subject === 'object' ? subject._id : subject;
     }) || [];
     
+    // Build subjectPrices object from existing student data
+    // If student has subjectPrices array, use it; otherwise create from subjects and totalPrice
+    const subjectPricesObj = {};
+    if (student.subjectPrices && Array.isArray(student.subjectPrices)) {
+      student.subjectPrices.forEach(sp => {
+        const subjectId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+        // Preserve exact price value as string to avoid rounding issues
+        subjectPricesObj[subjectId] = sp.price !== undefined && sp.price !== null ? String(sp.price) : '';
+      });
+    } else if (subjectIds.length > 0 && student.totalPrice) {
+      // Fallback: distribute totalPrice evenly if no subjectPrices exist
+      // Don't use toFixed here - let user enter their own prices
+      subjectIds.forEach(id => {
+        subjectPricesObj[id] = '';
+      });
+    } else {
+      // Initialize empty prices for selected subjects
+      subjectIds.forEach(id => {
+        subjectPricesObj[id] = '';
+      });
+    }
+    
     setFormData({
       name: student.name || '',
       studentId: student.studentId || '',
       email: student.email || '',
       birthday: birthdayDate,
       gender: student.gender || '',
-      mobile: student.mobile || '',
+      mobile: (() => {
+        // Format mobile number for display (remove +94 prefix if present, remove leading 0)
+        let mobile = student.mobile || '';
+        if (mobile) {
+          // Remove +94 prefix if present
+          if (mobile.startsWith('+94')) {
+            mobile = mobile.substring(3);
+          }
+          // Remove leading 0 if present
+          if (mobile.startsWith('0')) {
+            mobile = mobile.substring(1);
+          }
+          // Remove any non-digit characters
+          mobile = mobile.replace(/\D/g, '');
+        }
+        return mobile;
+      })(),
       selectedSubjects: subjectIds,
+      subjectPrices: subjectPricesObj,
       hasSpecialNeeds: student.hasSpecialNeeds || false,
+      specialNeed: student.specialNeed || '',
       specialNeedsDetails: student.specialNeedsDetails || '',
-      guardianName: student.guardianName || '',
-      guardianTelephone: student.guardianTelephone || ''
+      guardianFirstName: student.guardianFirstName || '',
+      guardianLastName: student.guardianLastName || '',
+      guardianTelephone: (() => {
+        // Format guardian telephone for display (remove +94 prefix if present, remove leading 0)
+        let guardianTel = student.guardianTelephone || '';
+        if (guardianTel) {
+          // Remove +94 prefix if present
+          if (guardianTel.startsWith('+94')) {
+            guardianTel = guardianTel.substring(3);
+          }
+          // Remove leading 0 if present
+          if (guardianTel.startsWith('0')) {
+            guardianTel = guardianTel.substring(1);
+          }
+          // Remove any non-digit characters
+          guardianTel = guardianTel.replace(/\D/g, '');
+        }
+        return guardianTel;
+      })()
     });
     
     setShowForm(true);
@@ -133,12 +255,14 @@ const StudentsPage = () => {
       gender: '',
       mobile: '',
       selectedSubjects: [],
+      subjectPrices: {},
       hasSpecialNeeds: false,
+      specialNeed: '',
       specialNeedsDetails: '',
-      guardianName: '',
+      guardianFirstName: '',
+      guardianLastName: '',
       guardianTelephone: ''
     });
-    setCalculatedPrice(0);
     setShowForm(false);
     setError('');
   };
@@ -152,7 +276,32 @@ const StudentsPage = () => {
     const trimmedName = (formData.name || '').trim();
     const trimmedStudentId = (formData.studentId || '').trim();
     const trimmedEmail = (formData.email || '').trim();
-    const trimmedMobile = (formData.mobile || '').trim();
+    
+    // Format mobile number: remove leading 0, ensure it starts with +94
+    let trimmedMobile = (formData.mobile || '').trim();
+    if (trimmedMobile) {
+      // Remove any non-digit characters
+      trimmedMobile = trimmedMobile.replace(/\D/g, '');
+      // Remove leading 0 if present
+      if (trimmedMobile.startsWith('0')) {
+        trimmedMobile = trimmedMobile.substring(1);
+      }
+      // Add +94 prefix
+      trimmedMobile = '+94' + trimmedMobile;
+    }
+
+    // Format guardian telephone number: remove leading 0, ensure it starts with +94
+    let trimmedGuardianTelephone = (formData.guardianTelephone || '').trim();
+    if (trimmedGuardianTelephone) {
+      // Remove any non-digit characters
+      trimmedGuardianTelephone = trimmedGuardianTelephone.replace(/\D/g, '');
+      // Remove leading 0 if present
+      if (trimmedGuardianTelephone.startsWith('0')) {
+        trimmedGuardianTelephone = trimmedGuardianTelephone.substring(1);
+      }
+      // Add +94 prefix
+      trimmedGuardianTelephone = '+94' + trimmedGuardianTelephone;
+    }
 
     // Validate required fields with specific error messages
     if (!trimmedName) {
@@ -160,11 +309,7 @@ const StudentsPage = () => {
       setLoading(false);
       return;
     }
-    if (!trimmedStudentId) {
-      setError('Please enter student ID');
-      setLoading(false);
-      return;
-    }
+    // Student ID is now auto-generated, so no validation needed
     if (!trimmedEmail) {
       setError('Please enter email address');
       setLoading(false);
@@ -185,6 +330,21 @@ const StudentsPage = () => {
       setLoading(false);
       return;
     }
+    if (formData.selectedSubjects.length === 0) {
+      setError('Please select at least one subject');
+      setLoading(false);
+      return;
+    }
+    // Validate that all selected subjects have prices
+    for (const subjectId of formData.selectedSubjects) {
+      const price = formData.subjectPrices[subjectId];
+      if (!price || Number(price) <= 0) {
+        const subject = subjects.find(s => s._id === subjectId);
+        setError(`Please enter a valid price for ${subject?.name || 'selected subject'}`);
+        setLoading(false);
+        return;
+      }
+    }
 
     try {
       const url = editingStudent 
@@ -192,6 +352,21 @@ const StudentsPage = () => {
         : 'https://lms-f679.onrender.com/api/students';
       
       const method = editingStudent ? 'PUT' : 'POST';
+
+      // Build subjectPrices array from formData
+      // Convert to numbers only when sending to backend, preserving exact values
+      const subjectPrices = formData.selectedSubjects.map(subjectId => {
+        const priceStr = formData.subjectPrices[subjectId] || '0';
+        // Parse as float to preserve decimal precision
+        const price = parseFloat(priceStr) || 0;
+        return {
+          subjectId: subjectId,
+          price: price
+        };
+      });
+      
+      // Calculate total price from subject prices
+      const totalPrice = subjectPrices.reduce((sum, sp) => sum + sp.price, 0);
 
       const response = await fetch(url, {
         method: method,
@@ -201,16 +376,20 @@ const StudentsPage = () => {
         },
         body: JSON.stringify({
           name: trimmedName,
-          studentId: trimmedStudentId,
+          studentId: editingStudent ? trimmedStudentId : '', // Empty string for new students to trigger auto-generation
           email: trimmedEmail,
           birthday: formData.birthday,
           gender: formData.gender,
           mobile: trimmedMobile,
           subjects: formData.selectedSubjects,
+          subjectPrices: subjectPrices,
+          totalPrice: totalPrice,
           hasSpecialNeeds: formData.hasSpecialNeeds,
+          specialNeed: formData.hasSpecialNeeds ? (formData.specialNeed || '').trim() : undefined,
           specialNeedsDetails: formData.hasSpecialNeeds ? (formData.specialNeedsDetails || '').trim() : undefined,
-          guardianName: formData.hasSpecialNeeds ? (formData.guardianName || '').trim() : undefined,
-          guardianTelephone: formData.hasSpecialNeeds ? (formData.guardianTelephone || '').trim() : undefined
+          guardianFirstName: formData.hasSpecialNeeds ? (formData.guardianFirstName || '').trim() : undefined,
+          guardianLastName: formData.hasSpecialNeeds ? (formData.guardianLastName || '').trim() : undefined,
+          guardianTelephone: formData.hasSpecialNeeds ? trimmedGuardianTelephone : undefined
         })
       });
 
@@ -226,12 +405,13 @@ const StudentsPage = () => {
           gender: '',
           mobile: '',
           selectedSubjects: [],
+          subjectPrices: {},
           hasSpecialNeeds: false,
           specialNeedsDetails: '',
-          guardianName: '',
+          guardianFirstName: '',
+          guardianLastName: '',
           guardianTelephone: ''
         });
-        setCalculatedPrice(0);
         setEditingStudent(null);
         setShowForm(false);
         setError('');
@@ -289,6 +469,28 @@ const StudentsPage = () => {
     }).join(', ');
   };
 
+  const getSubjectsWithPrices = (student) => {
+    if (!student.subjects || student.subjects.length === 0) return 'None';
+    
+    // If student has subjectPrices, use them
+    if (student.subjectPrices && Array.isArray(student.subjectPrices) && student.subjectPrices.length > 0) {
+      return student.subjectPrices.map(sp => {
+        const subjectId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+        const subject = student.subjects.find(s => {
+          const sId = typeof s === 'object' ? s._id : s;
+          return sId === subjectId;
+        });
+        const subjectName = typeof subject === 'object' && subject.name 
+          ? subject.name 
+          : subjects.find(s => s._id === subjectId)?.name || 'Unknown';
+        return `${subjectName} (LKR ${(sp.price || 0).toFixed(2)})`;
+      }).join(', ');
+    }
+    
+    // Fallback to just subject names
+    return getSubjectNames(student.subjects);
+  };
+
   const filteredStudents = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) {
@@ -324,7 +526,8 @@ const StudentsPage = () => {
       'Subjects',
       'Total Price (LKR)',
       'Special Needs',
-      'Guardian Name',
+      'Guardian First Name',
+      'Guardian Last Name',
       'Guardian Telephone'
     ];
 
@@ -340,7 +543,8 @@ const StudentsPage = () => {
         ? student.totalPrice
         : 0,
       student.hasSpecialNeeds ? 'Yes' : 'No',
-      student.guardianName || '',
+      student.guardianFirstName || '',
+      student.guardianLastName || '',
       student.guardianTelephone || ''
     ]);
 
@@ -443,15 +647,20 @@ const StudentsPage = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="studentId">Student ID <span className="required">*</span></label>
+                    <label htmlFor="studentId">
+                      Student ID {editingStudent ? <span className="required">*</span> : <span className="auto-generated">(Auto-generated)</span>}
+                    </label>
                     <input
                       type="text"
                       id="studentId"
                       name="studentId"
-                      value={formData.studentId}
+                      value={editingStudent ? formData.studentId : 'Auto-generated (ID####)'}
                       onChange={handleInputChange}
-                      placeholder="Enter student ID"
-                      required
+                      placeholder={editingStudent ? "Enter student ID" : "Will be auto-generated"}
+                      required={editingStudent}
+                      disabled={!editingStudent}
+                      readOnly={!editingStudent}
+                      style={!editingStudent ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
                     />
                   </div>
                 </div>
@@ -502,41 +711,70 @@ const StudentsPage = () => {
 
                   <div className="form-group">
                     <label htmlFor="mobile">Mobile <span className="required">*</span></label>
+                    <div className="mobile-input-wrapper">
+                      <span className="mobile-prefix">+94</span>
                     <input
                       type="tel"
                       id="mobile"
                       name="mobile"
                       value={formData.mobile}
-                      onChange={handleInputChange}
-                      placeholder="Enter mobile number"
+                        onChange={handleMobileChange}
+                        placeholder="771234567"
                       required
+                        maxLength="9"
                     />
+                    </div>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label>Subjects</label>
+                  <label>Subjects <span className="required">*</span></label>
                   <div className="subjects-selection">
                     {subjects.length === 0 ? (
                       <p className="no-subjects">No subjects available</p>
                     ) : (
                       <div className="subjects-checkbox-list">
-                        {subjects.map((subject) => (
-                          <label key={subject._id} className="subject-checkbox-item">
-                            <input
-                              type="checkbox"
-                              checked={formData.selectedSubjects.includes(subject._id)}
-                              onChange={() => handleSubjectToggle(subject._id)}
-                            />
-                            <span>{subject.name} - LKR {subject.price}</span>
-                          </label>
-                        ))}
+                        {subjects.map((subject) => {
+                          const isSelected = formData.selectedSubjects.includes(subject._id);
+                          return (
+                            <div key={subject._id} className="subject-item-with-price">
+                              <label className="subject-checkbox-item">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => handleSubjectToggle(subject._id)}
+                                />
+                                <span>{subject.name}</span>
+                              </label>
+                              {isSelected && (
+                                <div className="subject-price-input">
+                                  <label htmlFor={`price-${subject._id}`}>Price (LKR) <span className="required">*</span></label>
+                                  <input
+                                    type="number"
+                                    id={`price-${subject._id}`}
+                                    value={formData.subjectPrices[subject._id] || ''}
+                                    onChange={(e) => handleSubjectPriceChange(subject._id, e.target.value)}
+                                    placeholder="Enter price"
+                                    min="0"
+                                    step="any"
+                                    required
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
-                  {calculatedPrice > 0 && (
-                    <div className="price-display">
-                      <strong>Total Price: LKR {calculatedPrice.toFixed(2)}</strong>
+                  {formData.selectedSubjects.length > 0 && (
+                    <div className="total-price-display">
+                      <strong>Total Price: LKR {
+                        formData.selectedSubjects.reduce((sum, subjectId) => {
+                          const price = Number(formData.subjectPrices[subjectId] || 0);
+                          return sum + price;
+                        }, 0).toFixed(2)
+                      }</strong>
                     </div>
                   )}
                 </div>
@@ -556,6 +794,18 @@ const StudentsPage = () => {
                 {formData.hasSpecialNeeds && (
                   <>
                     <div className="form-group">
+                      <label htmlFor="specialNeed">Special Need</label>
+                      <input
+                        type="text"
+                        id="specialNeed"
+                        name="specialNeed"
+                        value={formData.specialNeed}
+                        onChange={handleInputChange}
+                        placeholder="Enter special need (e.g., Autism, ADHD, etc.)"
+                      />
+                    </div>
+
+                    <div className="form-group">
                       <label htmlFor="specialNeedsDetails">Special Needs Details</label>
                       <textarea
                         id="specialNeedsDetails"
@@ -569,27 +819,43 @@ const StudentsPage = () => {
 
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="guardianName">Guardian Name </label>
+                        <label htmlFor="guardianFirstName">Guardian First Name </label>
                         <input
                           type="text"
-                          id="guardianName"
-                          name="guardianName"
-                          value={formData.guardianName}
+                          id="guardianFirstName"
+                          name="guardianFirstName"
+                          value={formData.guardianFirstName}
                           onChange={handleInputChange}
-                          placeholder="Enter guardian name"
+                          placeholder="Enter guardian first name"
                         />
                       </div>
 
                       <div className="form-group">
-                        <label htmlFor="guardianTelephone">Guardian Telephone </label>
+                        <label htmlFor="guardianLastName">Guardian Last Name </label>
                         <input
-                          type="tel"
-                          id="guardianTelephone"
-                          name="guardianTelephone"
-                          value={formData.guardianTelephone}
+                          type="text"
+                          id="guardianLastName"
+                          name="guardianLastName"
+                          value={formData.guardianLastName}
                           onChange={handleInputChange}
-                          placeholder="Enter guardian telephone"
+                          placeholder="Enter guardian last name"
                         />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="guardianTelephone">Guardian Telephone </label>
+                      <div className="mobile-input-wrapper">
+                        <span className="mobile-prefix">+94</span>
+                      <input
+                        type="tel"
+                        id="guardianTelephone"
+                        name="guardianTelephone"
+                        value={formData.guardianTelephone}
+                          onChange={handleGuardianTelephoneChange}
+                          placeholder="771234567"
+                          maxLength={9}
+                      />
                       </div>
                     </div>
                   </>
@@ -636,7 +902,9 @@ const StudentsPage = () => {
                     <th>Subjects</th>
                     <th>Total Price</th>
                     <th>Special Needs</th>
-                    <th>Guardian</th>
+                    <th>Guardian First Name</th>
+                    <th>Guardian Last Name</th>
+                    <th>Guardian Telephone</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -649,19 +917,12 @@ const StudentsPage = () => {
                       <td>{formatDate(student.birthday)}</td>
                       <td>{student.gender}</td>
                       <td>{student.mobile}</td>
-                      <td>{getSubjectNames(student.subjects)}</td>
-                      <td>LKR {student.totalPrice?.toFixed(2) || '0.00'}</td>
+                    <td>{getSubjectsWithPrices(student)}</td>
+                    <td>LKR {student.totalPrice?.toFixed(2) || '0.00'}</td>
                       <td>{student.hasSpecialNeeds ? 'Yes' : 'No'}</td>
-                      <td>
-                        {student.hasSpecialNeeds && student.guardianName ? (
-                          <div>
-                            <div>{student.guardianName}</div>
-                            {student.guardianTelephone && (
-                              <div className="guardian-phone">{student.guardianTelephone}</div>
-                            )}
-                          </div>
-                        ) : '-'}
-                      </td>
+                      <td>{student.hasSpecialNeeds && student.guardianFirstName ? student.guardianFirstName : '-'}</td>
+                      <td>{student.hasSpecialNeeds && student.guardianLastName ? student.guardianLastName : '-'}</td>
+                      <td>{student.hasSpecialNeeds && student.guardianTelephone ? student.guardianTelephone : '-'}</td>
                       <td>
                         <button 
                           className="edit-btn"

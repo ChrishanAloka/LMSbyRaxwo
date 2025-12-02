@@ -12,19 +12,45 @@ const IncomePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonths, setSelectedMonths] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   const token = localStorage.getItem('adminToken');
 
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
   useEffect(() => {
     fetchIncomeStatistics();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchIncomeStatistics, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [selectedMonths]);
+
+  const handleMonthToggle = (month) => {
+    setSelectedMonths(prev => {
+      if (prev.includes(month)) {
+        return prev.filter(m => m !== month);
+      } else {
+        return [...prev, month];
+      }
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSelectedMonths([]);
+  };
 
   const fetchIncomeStatistics = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/income/statistics', {
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (selectedMonths.length > 0) {
+        params.append('months', selectedMonths.join(','));
+      }
+
+      const url = `https://lms-f679.onrender.com/api/income/statistics${params.toString() ? '?' + params.toString() : ''}`;
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -105,8 +131,10 @@ const IncomePage = () => {
       row.amount ?? 0
     ]);
 
-    const csvContent = [headers, ...rows]
-      .map((row) =>
+    const csvContent = [
+      `Finance Report - ${new Date().toISOString().slice(0, 10)}`,
+      ...headers,
+      ...rows.map((row) =>
         row
           .map((cell) => {
             const value = String(cell ?? '');
@@ -114,13 +142,58 @@ const IncomePage = () => {
           })
           .join(',')
       )
-      .join('\n');
+    ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `finance-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleGenerateFilteredReport = () => {
+    if (selectedMonths.length === 0) {
+      alert('Please select at least one month to generate a filtered report.');
+      return;
+    }
+
+    if (!filteredSummaryRows.length) {
+      alert('No finance summary records available to generate a report.');
+      return;
+    }
+
+    // Build filter info for report
+    const filterText = `\nFiltered by: Months: ${selectedMonths.join(', ')}\n`;
+
+    const headers = ['Metric', 'Amount (LKR)'];
+    const rows = filteredSummaryRows.map((row) => [
+      row.label,
+      row.amount ?? 0
+    ]);
+
+    const csvContent = [
+      `Finance Report - Filtered by Month(s) - ${new Date().toISOString().slice(0, 10)}${filterText}`,
+      ...headers,
+      ...rows.map((row) =>
+        row
+          .map((cell) => {
+            const value = String(cell ?? '');
+            return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+          })
+          .join(',')
+      )
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const fileName = `finance-report-filtered-${selectedMonths.join('-')}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -168,7 +241,7 @@ const IncomePage = () => {
               <div className="income-search">
                 <input
                   type="text"
-                    placeholder="Search finance summary"
+                  placeholder="Search finance summary"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />
@@ -185,21 +258,71 @@ const IncomePage = () => {
               </div>
               <button
                 type="button"
+                className="filter-toggle-btn"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? 'Hide Filters' : 'Filter'}
+              </button>
+              <button
+                type="button"
                 className="report-btn"
                 onClick={handleGenerateReport}
                 disabled={filteredSummaryRows.length === 0}
               >
                 Generate Report
               </button>
-              <button 
-                className="refresh-btn" 
-                onClick={fetchIncomeStatistics}
-                disabled={loading}
-              >
-                {loading ? 'Refreshing...' : 'Refresh'}
-              </button>
+              {selectedMonths.length > 0 && (
+                <button
+                  type="button"
+                  className="filtered-report-btn"
+                  onClick={handleGenerateFilteredReport}
+                  disabled={filteredSummaryRows.length === 0}
+                >
+                  Generate Filtered Report
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Month Filter Section */}
+          {showFilters && (
+            <div className="filter-section">
+            <div className="filter-header-row">
+              {selectedMonths.length > 0 && (
+                <button
+                  type="button"
+                  className="clear-filter-btn"
+                  onClick={handleClearFilters}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+
+            <div className="filter-group">
+              <label>Select Month(s)</label>
+              <div className="months-filter">
+                <div className="months-checkbox-grid">
+                  {months.map((month, index) => (
+                    <label key={index} className="month-checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={selectedMonths.includes(month)}
+                        onChange={() => handleMonthToggle(month)}
+                      />
+                      <span>{month}</span>
+                    </label>
+                  ))}
+                </div>
+                {selectedMonths.length > 0 && (
+                  <div className="selected-months-info">
+                    <span>{selectedMonths.length} month{selectedMonths.length !== 1 ? 's' : ''} selected: {selectedMonths.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          )}
 
           {statistics && (
             <>

@@ -12,7 +12,6 @@ const SubjectsPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     conductedBy: '',
-    price: '',
     image: '',
     description: ''
   });
@@ -82,7 +81,6 @@ const SubjectsPage = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('name', formData.name);
       formDataToSend.append('conductedBy', formData.conductedBy);
-      formDataToSend.append('price', formData.price);
       formDataToSend.append('description', formData.description);
       
       // If no file is selected, use the image URL
@@ -104,7 +102,7 @@ const SubjectsPage = () => {
 
       if (response.ok && data.success) {
         await fetchSubjects();
-        setFormData({ name: '', conductedBy: '', price: '', image: '', description: '' });
+        setFormData({ name: '', conductedBy: '', image: '', description: '' });
         setImageFile(null);
         setShowForm(false);
         setEditingSubject(null);
@@ -123,7 +121,6 @@ const SubjectsPage = () => {
     setFormData({
       name: subject.name,
       conductedBy: subject.conductedBy._id || subject.conductedBy,
-      price: subject.price,
       image: (subject.image && subject.image.includes('/uploads/')) ? '' : subject.image || '',
       description: subject.description
     });
@@ -157,7 +154,7 @@ const SubjectsPage = () => {
   const handleCancel = () => {
     setShowForm(false);
     setEditingSubject(null);
-    setFormData({ name: '', conductedBy: '', price: '', image: '', description: '' });
+    setFormData({ name: '', conductedBy: '', image: '', description: '' });
     setImageFile(null);
     setError('');
   };
@@ -185,14 +182,12 @@ const SubjectsPage = () => {
     const headers = [
       'Subject Name',
       'Conducted By',
-      'Price (LKR)',
       'Description'
     ];
 
     const rows = filteredSubjects.map((subject) => [
       subject.name || '',
       subject.conductedBy?.name || '',
-      subject.price !== undefined && subject.price !== null ? subject.price : 0,
       subject.description || ''
     ]);
 
@@ -303,21 +298,6 @@ const SubjectsPage = () => {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="price">Price (LKR)</label>
-                    <input
-                      type="number"
-                      id="price"
-                      name="price"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      placeholder="Enter price"
-                      required
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-
-                  <div className="form-group">
                     <label htmlFor="image">Upload Image</label>
                     <input
                       type="file"
@@ -396,7 +376,6 @@ const SubjectsPage = () => {
                       alt={subject.name} 
                       className="subject-image" 
                     />
-                    <div className="price-tag">LKR {subject.price}</div>
                   </div>
                   
                   <div className="subject-card-body">

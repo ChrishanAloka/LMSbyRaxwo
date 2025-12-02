@@ -1,5 +1,5 @@
 .sidebar {
-  width: 190px;
+  width: 220px;
   min-height: 100vh;
   background: white;
   padding: 0.625rem 0.5rem;
@@ -15,12 +15,26 @@
   gap: 0.5rem;
   margin-bottom: 0.875rem;
   padding-left: 0.5rem;
+  white-space: nowrap;
+  overflow: visible;
+  min-width: 0;
+}
+
+.logo-image {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .logo-text {
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   color: #1F2937;
+  white-space: nowrap;
+  line-height: 1;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .sidebar-nav {

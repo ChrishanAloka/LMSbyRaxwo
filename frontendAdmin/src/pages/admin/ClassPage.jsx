@@ -20,6 +20,11 @@ const ClassPage = () => {
     date: '',
     time: ''
   });
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [studentAttendance, setStudentAttendance] = useState(null);
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
+  const [attendancePeriod, setAttendancePeriod] = useState('weekly'); // 'weekly' or 'monthly'
 
   const token = localStorage.getItem('adminToken');
 
@@ -251,6 +256,144 @@ const ClassPage = () => {
     );
   };
 
+  // Search for student weekly attendance
+  const handleSearchStudentAttendance = async () => {
+    if (!studentSearchTerm.trim()) {
+      alert('Please enter a student ID or name');
+      return;
+    }
+
+    setLoadingAttendance(true);
+    setStudentAttendance(null);
+
+    try {
+      // Determine if search term is likely an ID or name
+      // IDs typically: pure numbers, or start with letters followed by numbers (e.g., ID0001, STU123)
+      // Names typically: contain spaces or are longer text strings
+      const searchTerm = studentSearchTerm.trim();
+      const isLikelyId = /^[A-Za-z]*\d+$/.test(searchTerm) && searchTerm.length <= 20 && !searchTerm.includes(' ');
+      const queryParam = isLikelyId ? 'studentId' : 'studentName';
+      
+      const response = await fetch(
+        `https://lms-f679.onrender.com/api/attempts/attendance/weekly?${queryParam}=${encodeURIComponent(searchTerm)}&period=${attendancePeriod}`,
+        {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setStudentAttendance(data);
+        setShowAttendanceModal(true);
+      } else {
+        alert(data.message || 'Student not found or no attendance records for this week');
+      }
+    } catch (err) {
+      console.error('Error fetching student attendance:', err);
+      alert('Network error. Please try again.');
+    } finally {
+      setLoadingAttendance(false);
+    }
+  };
+
+  const handleCloseAttendanceModal = () => {
+    setShowAttendanceModal(false);
+    setStudentAttendance(null);
+    setStudentSearchTerm('');
+  };
+
+  // Generate attendance report (CSV)
+  const handleGenerateAttendanceReport = () => {
+    if (!studentAttendance) return;
+
+    const period = attendancePeriod === 'weekly' ? 'Weekly' : 'Monthly';
+    const studentName = studentAttendance.student.name;
+    const studentId = studentAttendance.student.studentId;
+    const dateRange = `${formatDate(studentAttendance.dateRange.start)} - ${formatDate(studentAttendance.dateRange.end)}`;
+
+    // Create CSV content
+    let csvContent = `${period} Attendance Report\n`;
+    csvContent += `Student: ${studentName} (${studentId})\n`;
+    csvContent += `Period: ${dateRange}\n`;
+    csvContent += `\n`;
+    csvContent += `Overall Statistics\n`;
+    csvContent += `Total Classes,${studentAttendance.overallStatistics.totalClasses}\n`;
+    csvContent += `Attended,${studentAttendance.overallStatistics.attended}\n`;
+    csvContent += `Absent,${studentAttendance.overallStatistics.absent}\n`;
+    csvContent += `Pending,${studentAttendance.overallStatistics.pending}\n`;
+    csvContent += `\n`;
+
+    // Add subject-wise data
+    if (studentAttendance.attendanceBySubject && studentAttendance.attendanceBySubject.length > 0) {
+      studentAttendance.attendanceBySubject.forEach((subject) => {
+        csvContent += `\nSubject: ${subject.subjectName}\n`;
+        csvContent += `Total Classes,${subject.statistics.total}\n`;
+        csvContent += `Attended,${subject.statistics.attended}\n`;
+        csvContent += `Absent,${subject.statistics.absent}\n`;
+        csvContent += `Pending,${subject.statistics.pending}\n`;
+        csvContent += `\n`;
+        csvContent += `Class Details\n`;
+        csvContent += `Teacher,Date,Time,Class Status,Attendance\n`;
+        
+        subject.classes.forEach((attempt) => {
+          const teacher = attempt.classId?.teacherId?.name || 'N/A';
+          const date = attempt.classId?.date || 'N/A';
+          const time = attempt.classId?.time || 'N/A';
+          const classStatus = attempt.classId?.status || 'N/A';
+          const attendance = attempt.attendance === 'attended' ? 'Attended' : 
+                            attempt.attendance === 'absent' ? 'Absent' : 'Pending';
+          
+          csvContent += `${teacher},${date},${time},${classStatus},${attendance}\n`;
+        });
+        csvContent += `\n`;
+      });
+    } else {
+      csvContent += `No attendance records found.\n`;
+    }
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const fileName = `${period}_Attendance_${studentName}_${studentId}_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = fileName.replace(/[^a-z0-9]/gi, '_');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Format date for display
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  // Format date and time for display
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   const isTeacherUser = ['teacher', 'employee'].includes(userType);
 
   return (
@@ -277,6 +420,51 @@ const ClassPage = () => {
           </div>
 
           {error && <div className="error-message">{error}</div>}
+
+          {/* Student Attendance Search Section - Admin Only */}
+          {userType === 'admin' && (
+            <div className="student-attendance-search-section">
+              <div className="attendance-search-header">
+                <h2>Student Attendance</h2>
+                <p className="attendance-search-subtitle">Search by student ID or name to view attendance</p>
+              </div>
+              <div className="attendance-search-box">
+                <input
+                  type="text"
+                  placeholder="Enter student ID or name"
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearchStudentAttendance();
+                    }
+                  }}
+                  className="attendance-search-input"
+                />
+                <div className="attendance-period-toggle">
+                  <button
+                    className={`period-btn ${attendancePeriod === 'weekly' ? 'active' : ''}`}
+                    onClick={() => setAttendancePeriod('weekly')}
+                  >
+                    Weekly
+                  </button>
+                  <button
+                    className={`period-btn ${attendancePeriod === 'monthly' ? 'active' : ''}`}
+                    onClick={() => setAttendancePeriod('monthly')}
+                  >
+                    Monthly
+                  </button>
+                </div>
+                <button
+                  className="attendance-search-btn"
+                  onClick={handleSearchStudentAttendance}
+                  disabled={loadingAttendance || !studentSearchTerm.trim()}
+                >
+                  {loadingAttendance ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="class-table-container">
             {loading ? (
@@ -323,9 +511,9 @@ const ClassPage = () => {
                                   <button 
                                     className="delete-class-btn-small"
                                     onClick={() => handleDeleteClass(existingClass._id)}
-                                    title="Remove Class"
+                                    title="End Class"
                                   >
-                                    Remove
+                                    End Class
                                   </button>
                                 </>
                               )}
@@ -465,6 +653,119 @@ const ClassPage = () => {
               </button>
               <button className="submit-btn" onClick={handleUpdateClass}>
                 Update Class
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Attendance Modal */}
+      {showAttendanceModal && studentAttendance && (
+        <div className="modal-overlay" onClick={handleCloseAttendanceModal}>
+          <div className="modal-content attendance-modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{attendancePeriod === 'weekly' ? 'Weekly' : 'Monthly'} Attendance - {studentAttendance.student.name}</h2>
+            <div className="attendance-student-info">
+              <p><strong>Student ID:</strong> {studentAttendance.student.studentId}</p>
+              <p><strong>Email:</strong> {studentAttendance.student.email}</p>
+              <p><strong>Period:</strong> {formatDate(studentAttendance.dateRange.start)} - {formatDate(studentAttendance.dateRange.end)}</p>
+            </div>
+            
+            <div className="attendance-statistics">
+              <div className="stat-card">
+                <div className="stat-value">{studentAttendance.overallStatistics.totalClasses}</div>
+                <div className="stat-label">Total Classes</div>
+              </div>
+              <div className="stat-card stat-attended">
+                <div className="stat-value">{studentAttendance.overallStatistics.attended}</div>
+                <div className="stat-label">Attended</div>
+              </div>
+              <div className="stat-card stat-absent">
+                <div className="stat-value">{studentAttendance.overallStatistics.absent}</div>
+                <div className="stat-label">Absent</div>
+              </div>
+              <div className="stat-card stat-pending">
+                <div className="stat-value">{studentAttendance.overallStatistics.pending}</div>
+                <div className="stat-label">Pending</div>
+              </div>
+            </div>
+
+            <div className="attendance-list-container">
+              {studentAttendance.attendanceBySubject && studentAttendance.attendanceBySubject.length === 0 ? (
+                <div className="empty-state">
+                  <p>No attendance records for this {attendancePeriod}.</p>
+                </div>
+              ) : (
+                <div className="attendance-by-subject">
+                  {studentAttendance.attendanceBySubject.map((subject) => (
+                    <div key={subject.subjectId} className="subject-attendance-group">
+                      <div className="subject-header">
+                        <h3 className="subject-name">{subject.subjectName}</h3>
+                        <div className="subject-stats">
+                          <span className="subject-stat-item">
+                            <strong>Total:</strong> {subject.statistics.total}
+                          </span>
+                          <span className="subject-stat-item stat-attended">
+                            <strong>Attended:</strong> {subject.statistics.attended}
+                          </span>
+                          <span className="subject-stat-item stat-absent">
+                            <strong>Absent:</strong> {subject.statistics.absent}
+                          </span>
+                          <span className="subject-stat-item stat-pending">
+                            <strong>Pending:</strong> {subject.statistics.pending}
+                          </span>
+                        </div>
+                      </div>
+                      <table className="attendance-table">
+                        <thead>
+                          <tr>
+                            <th>Teacher</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Attendance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subject.classes.map((attempt) => (
+                            <tr key={attempt._id}>
+                              <td>{attempt.classId?.teacherId?.name || 'N/A'}</td>
+                              <td>{attempt.classId?.date || 'N/A'}</td>
+                              <td>{attempt.classId?.time || 'N/A'}</td>
+                              <td>
+                                <span className={`class-status-badge status-${attempt.classId?.status || 'unknown'}`}>
+                                  {attempt.classId?.status || 'N/A'}
+                                </span>
+                              </td>
+                              <td>
+                                {attempt.attendance ? (
+                                  <span className={`attendance-badge attendance-${attempt.attendance}`}>
+                                    {attempt.attendance === 'attended' ? 'Attended' : 
+                                     attempt.attendance === 'absent' ? 'Absent' : 'Pending'}
+                                  </span>
+                                ) : (
+                                  <span className="attendance-badge attendance-pending">Pending</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                className="generate-report-btn" 
+                onClick={handleGenerateAttendanceReport}
+                disabled={!studentAttendance || (studentAttendance.attendanceBySubject && studentAttendance.attendanceBySubject.length === 0)}
+              >
+                Generate Report
+              </button>
+              <button className="cancel-btn" onClick={handleCloseAttendanceModal}>
+                Close
               </button>
             </div>
           </div>

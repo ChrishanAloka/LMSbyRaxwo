@@ -1,6 +1,7 @@
 import Marks from '../models/Marks.js';
 import Student from '../models/Student.js';
 import Subject from '../models/Subject.js';
+import Employee from '../models/Employee.js';
 
 // @desc    Get all marks records
 // @route   GET /api/marks
@@ -144,7 +145,8 @@ export const createMarks = async (req, res) => {
       });
     }
 
-    // Validate subjects
+    // Validate and process subjects
+    const processedSubjects = [];
     for (const subject of subjects) {
       if (!subject.subjectId || subject.marks === undefined || !subject.grade) {
         return res.status(400).json({
@@ -160,20 +162,61 @@ export const createMarks = async (req, res) => {
         });
       }
 
-      // Validate subject exists
-      const subjectExists = await Subject.findById(subject.subjectId);
-      if (!subjectExists) {
-        return res.status(404).json({
-          success: false,
-          message: `Subject with ID ${subject.subjectId} not found`
-        });
+      let subjectId = subject.subjectId;
+      
+      // Check if subjectId is a valid ObjectId
+      const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(subjectId);
+      
+      if (!isValidObjectId) {
+        // If not a valid ObjectId, treat it as a subject name
+        // Try to find existing subject by name
+        let subjectDoc = await Subject.findOne({ name: subjectId });
+        
+        if (!subjectDoc) {
+          // Create a temporary test subject if it doesn't exist
+          // Note: This is a temporary solution for test subjects
+          // Find any employee to use as conductedBy (required field)
+          const anyEmployee = await Employee.findOne();
+          
+          if (!anyEmployee) {
+            return res.status(400).json({
+              success: false,
+              message: 'Cannot create test subjects. No employees found in the system. Please create a subject first.'
+            });
+          }
+
+          subjectDoc = await Subject.create({
+            name: subjectId,
+            description: `Temporary test subject: ${subjectId}`,
+            image: '/uploads/default-subject.png',
+            conductedBy: anyEmployee._id,
+            status: 'active'
+          });
+        }
+        
+        subjectId = subjectDoc._id;
+      } else {
+        // Validate subject exists
+        const subjectExists = await Subject.findById(subjectId);
+        if (!subjectExists) {
+          return res.status(404).json({
+            success: false,
+            message: `Subject with ID ${subjectId} not found`
+          });
+        }
       }
+
+      processedSubjects.push({
+        subjectId: subjectId,
+        marks: subject.marks,
+        grade: subject.grade
+      });
     }
 
     // Create marks record
     const marksRecord = await Marks.create({
       studentId,
-      subjects
+      subjects: processedSubjects
     });
 
     // Populate before sending response
@@ -210,7 +253,8 @@ export const updateMarks = async (req, res) => {
     }
 
     if (subjects && Array.isArray(subjects)) {
-      // Validate subjects
+      // Validate and process subjects
+      const processedSubjects = [];
       for (const subject of subjects) {
         if (!subject.subjectId || subject.marks === undefined || !subject.grade) {
           return res.status(400).json({
@@ -226,17 +270,57 @@ export const updateMarks = async (req, res) => {
           });
         }
 
-        // Validate subject exists
-        const subjectExists = await Subject.findById(subject.subjectId);
-        if (!subjectExists) {
-          return res.status(404).json({
-            success: false,
-            message: `Subject with ID ${subject.subjectId} not found`
-          });
+        let subjectId = subject.subjectId;
+        
+        // Check if subjectId is a valid ObjectId
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(subjectId);
+        
+        if (!isValidObjectId) {
+          // If not a valid ObjectId, treat it as a subject name
+          // Try to find existing subject by name
+          let subjectDoc = await Subject.findOne({ name: subjectId });
+          
+          if (!subjectDoc) {
+            // Create a temporary test subject if it doesn't exist
+            // Find any employee to use as conductedBy (required field)
+            const anyEmployee = await Employee.findOne();
+            
+            if (!anyEmployee) {
+              return res.status(400).json({
+                success: false,
+                message: 'Cannot create test subjects. No employees found in the system. Please create a subject first.'
+              });
+            }
+
+            subjectDoc = await Subject.create({
+              name: subjectId,
+              description: `Temporary test subject: ${subjectId}`,
+              image: '/uploads/default-subject.png',
+              conductedBy: anyEmployee._id,
+              status: 'active'
+            });
+          }
+          
+          subjectId = subjectDoc._id;
+        } else {
+          // Validate subject exists
+          const subjectExists = await Subject.findById(subjectId);
+          if (!subjectExists) {
+            return res.status(404).json({
+              success: false,
+              message: `Subject with ID ${subjectId} not found`
+            });
+          }
         }
+
+        processedSubjects.push({
+          subjectId: subjectId,
+          marks: subject.marks,
+          grade: subject.grade
+        });
       }
 
-      marksRecord.subjects = subjects;
+      marksRecord.subjects = processedSubjects;
     }
 
     await marksRecord.save();

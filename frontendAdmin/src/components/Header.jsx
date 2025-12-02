@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Header.css';
+import logo from '../assets/logo.png';
 
 const Header = ({ onSearch }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,7 +34,8 @@ const Header = ({ onSearch }) => {
     <header className="header">
       <div className="header-container">
         <div className="logo" onClick={handleLogoClick}>
-          <span className="logo-text">Learning Platform</span>
+          <img src={logo} alt="Wisdom Institute Logo" className="logo-image" />
+          <span className="logo-text">WISDOM INSTITUTE</span>
         </div>
 
         <div className="search-container">

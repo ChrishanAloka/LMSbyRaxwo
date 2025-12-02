@@ -22,16 +22,26 @@
   gap: 0.5rem;
   cursor: pointer;
   transition: opacity 0.2s;
+  white-space: nowrap;
 }
 
 .logo:hover {
   opacity: 0.8;
 }
 
+.logo-image {
+  height: 55px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .logo-text {
-  font-size: 1.25rem;
+  font-size: 1.625rem;
   font-weight: 600;
   color: #1f2937;
+  white-space: nowrap;
+  line-height: 1;
 }
 
 .search-container {
