@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './EmployeePage.css';
 
 const EmployeePage = () => {
@@ -73,7 +74,7 @@ const EmployeePage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,7 +90,7 @@ const EmployeePage = () => {
 
   const fetchRoles = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees/roles', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/roles`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -122,7 +123,7 @@ const EmployeePage = () => {
     const roleToAdd = newRole.trim();
 
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees/roles', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/roles`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -158,7 +159,7 @@ const EmployeePage = () => {
     if (!window.confirm(`Are you sure you want to delete the role "${roleName}"?`)) return;
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/roles/${roleId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/roles/${roleId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -188,7 +189,7 @@ const EmployeePage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -237,7 +238,7 @@ const EmployeePage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${editingEmployee._id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${editingEmployee._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -296,7 +297,7 @@ const EmployeePage = () => {
     
     setLoading(true);
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${selectedEmployeeForPermission._id}/permissions`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${selectedEmployeeForPermission._id}/permissions`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -340,7 +341,7 @@ const EmployeePage = () => {
     if (!window.confirm('Are you sure you want to delete this employee?')) return;
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

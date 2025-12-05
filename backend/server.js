@@ -18,6 +18,7 @@ import extraIncomeRoutes from './routes/extraIncomeRoutes.js';
 import marksRoutes from './routes/marksRoutes.js';
 import attemptRoutes from './routes/attemptRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import examRoutes from './routes/examRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -81,25 +82,12 @@ app.use('/api/extra-income', extraIncomeRoutes);
 app.use('/api/marks', marksRoutes);
 app.use('/api/attempts', attemptRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/exams', examRoutes);
 
-// // Connect to Database
-// connectDB();
+// Connect to Database
+connectDB();
 
-// // Start server
-// app.listen(PORT, () => {
-//   console.log(`Server Started on http://localhost:${PORT}`);
-// });
-
-const startServer = async () => {
-  try {
-    await connectDB(); // ✅ Wait for DB connection
-    app.listen(PORT, () => {
-      console.log(`✅ Server Started on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error('❌ Failed to start server due to database error:', err);
-    process.exit(1);
-  }
-};
-
-startServer();
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server Started on http://localhost:${PORT}`);
+});

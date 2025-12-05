@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './ExamPage.css';
 
 const ExamPage = () => {
@@ -131,7 +132,7 @@ const ExamPage = () => {
   const fetchSubjects = async () => {
     setLoadingSubjects(true);
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       
       if (data.success && data.data) {
@@ -150,7 +151,7 @@ const ExamPage = () => {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/exams', {
+      const response = await fetch(`${API_CONFIG.API_URL}/exams`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -175,7 +176,7 @@ const ExamPage = () => {
     setValidatedStudent(null);
 
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/students', {
+      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -285,8 +286,8 @@ const ExamPage = () => {
 
     try {
       const url = editingExam
-        ? `https://lms-f679.onrender.com/api/exams/${editingExam._id}`
-        : 'https://lms-f679.onrender.com/api/exams';
+        ? `${API_CONFIG.API_URL}/exams/${editingExam._id}`
+        : `${API_CONFIG.API_URL}/exams`;
       
       const method = editingExam ? 'PUT' : 'POST';
 
@@ -400,7 +401,7 @@ const ExamPage = () => {
     setSuccess('');
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/exams/${examId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/exams/${examId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

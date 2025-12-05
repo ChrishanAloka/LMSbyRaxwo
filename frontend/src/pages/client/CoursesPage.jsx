@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import CourseCard from '../../components/CourseCard';
 import FilterButtons from '../../components/FilterButtons';
+import API_CONFIG from '../../config/api';
 import './CoursesPage.css';
 
 const CoursesPage = () => {
@@ -20,7 +21,7 @@ const CoursesPage = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects', {
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './PaymentPage.css';
 
 const PaymentPage = () => {
@@ -68,7 +69,7 @@ const PaymentPage = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/students', {
+      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,7 +85,7 @@ const PaymentPage = () => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       if (data.success) {
         setSubjects(data.data);
@@ -97,7 +98,7 @@ const PaymentPage = () => {
   const fetchPayments = async () => {
     setFetchingPayments(true);
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/payments', {
+      const response = await fetch(`${API_CONFIG.API_URL}/payments`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -275,7 +276,7 @@ const PaymentPage = () => {
         paymentDate: formData.paymentDate
       };
 
-      const response = await fetch('https://lms-f679.onrender.com/api/payments', {
+      const response = await fetch(`${API_CONFIG.API_URL}/payments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -394,7 +395,7 @@ const PaymentPage = () => {
         paymentDate: editFormData.paymentDate
       };
 
-      const response = await fetch(`https://lms-f679.onrender.com/api/payments/${editingPayment._id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/payments/${editingPayment._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -432,7 +433,7 @@ const PaymentPage = () => {
     setSuccess('');
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/payments/${paymentId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/payments/${paymentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

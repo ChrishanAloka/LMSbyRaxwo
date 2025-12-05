@@ -1,5 +1,11 @@
 import Subject from '../models/Subject.js';
 import Class from '../models/Class.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // @desc    Get all subjects
 // @route   GET /api/subjects
@@ -132,9 +138,37 @@ export const updateSubject = async (req, res) => {
     if (price !== undefined) subject.price = price;
     
     // Handle image: uploaded file or provided URL
+    const oldImage = subject.image; // Store old image path before updating
+    
     if (req.file) {
+      // New file uploaded - delete old image if it was a local file
+      if (oldImage && oldImage.startsWith('/uploads/')) {
+        const oldImagePath = path.join(__dirname, '..', oldImage);
+        if (fs.existsSync(oldImagePath)) {
+          try {
+            fs.unlinkSync(oldImagePath);
+            console.log(`Deleted old image file: ${oldImagePath}`);
+          } catch (fileError) {
+            console.error(`Error deleting old image file: ${fileError.message}`);
+            // Continue with update even if old file deletion fails
+          }
+        }
+      }
       subject.image = `/uploads/${req.file.filename}`;
     } else if (req.body.image) {
+      // If new image URL is provided and it's different from old one, delete old local file
+      if (oldImage && oldImage.startsWith('/uploads/') && oldImage !== req.body.image) {
+        const oldImagePath = path.join(__dirname, '..', oldImage);
+        if (fs.existsSync(oldImagePath)) {
+          try {
+            fs.unlinkSync(oldImagePath);
+            console.log(`Deleted old image file: ${oldImagePath}`);
+          } catch (fileError) {
+            console.error(`Error deleting old image file: ${fileError.message}`);
+            // Continue with update even if old file deletion fails
+          }
+        }
+      }
       subject.image = req.body.image;
     }
     
@@ -173,6 +207,23 @@ export const deleteSubject = async (req, res) => {
       });
     }
 
+    // Delete the image file if it's a local upload
+    if (subject.image && subject.image.startsWith('/uploads/')) {
+      const imagePath = path.join(__dirname, '..', subject.image);
+      
+      // Check if file exists and delete it
+      if (fs.existsSync(imagePath)) {
+        try {
+          fs.unlinkSync(imagePath);
+          console.log(`Deleted image file: ${imagePath}`);
+        } catch (fileError) {
+          console.error(`Error deleting image file: ${fileError.message}`);
+          // Continue with subject deletion even if file deletion fails
+        }
+      }
+    }
+
+    // Delete the subject from database
     await subject.deleteOne();
 
     res.status(200).json({

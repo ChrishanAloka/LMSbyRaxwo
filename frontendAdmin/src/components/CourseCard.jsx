@@ -1,4 +1,5 @@
 import React from 'react';
+import API_CONFIG from '../config/api';
 import './CourseCard.css';
 
 const CourseCard = ({ 
@@ -21,7 +22,7 @@ const CourseCard = ({
           src={
             course.image
               ? (course.image.startsWith('/uploads/') 
-                  ? `https://lms-f679.onrender.com${course.image}` 
+                  ? `${API_CONFIG.BASE_URL}${course.image}` 
                   : course.image)
               : "https://via.placeholder.com/300x200?text=Course+Image"
           }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './AdminDashboard.css';
 import revenueIcon from '../../assets/revenue.png';
 import subjectsIcon from '../../assets/subjects (2).png';
@@ -102,12 +103,12 @@ const AdminDashboard = () => {
         classesResponse,
         paymentsResponse
       ] = await Promise.all([
-        fetch(`https://lms-f679.onrender.com/api/income/statistics${incomeParams.toString() ? '?' + incomeParams.toString() : ''}`, { headers }),
-        fetch('https://lms-f679.onrender.com/api/subjects', { headers }),
-        fetch('https://lms-f679.onrender.com/api/students', { headers }),
-        fetch('https://lms-f679.onrender.com/api/admin/employees', { headers }),
-        fetch('https://lms-f679.onrender.com/api/classes?includeDeleted=false', { headers }),
-        fetch(`https://lms-f679.onrender.com/api/payments${paymentsParams.toString() ? '?' + paymentsParams.toString() : ''}`, { headers })
+        fetch(`${API_CONFIG.API_URL}/income/statistics${incomeParams.toString() ? '?' + incomeParams.toString() : ''}`, { headers }),
+        fetch(`${API_CONFIG.API_URL}/subjects`, { headers }),
+        fetch(`${API_CONFIG.API_URL}/students`, { headers }),
+        fetch(`${API_CONFIG.API_URL}/admin/employees`, { headers }),
+        fetch(`${API_CONFIG.API_URL}/classes?includeDeleted=false`, { headers }),
+        fetch(`${API_CONFIG.API_URL}/payments${paymentsParams.toString() ? '?' + paymentsParams.toString() : ''}`, { headers })
       ]);
 
       const [
@@ -465,7 +466,7 @@ const AdminDashboard = () => {
 
     const imageUrl = subject.image
       ? subject.image.startsWith('/uploads/')
-        ? `https://lms-f679.onrender.com${subject.image}`
+        ? `${API_CONFIG.BASE_URL}${subject.image}`
         : subject.image
       : 'https://via.placeholder.com/300x200?text=Class+Image';
 

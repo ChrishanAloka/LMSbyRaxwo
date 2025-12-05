@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './SalaryPage.css';
 
 const SalaryPage = () => {
@@ -33,7 +34,7 @@ const SalaryPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -84,7 +85,7 @@ const SalaryPage = () => {
 
     setSubmittingCommission(true);
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${commissionData.employeeId}/commission`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${commissionData.employeeId}/commission`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -149,7 +150,7 @@ const SalaryPage = () => {
 
     setSubmittingCommission(true);
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${editingCommission.employeeId}/commission`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${editingCommission.employeeId}/commission`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -196,7 +197,7 @@ const SalaryPage = () => {
       const newTotal = updatedCommissions.reduce((sum, mc) => sum + (mc.amount || 0), 0);
 
       // Update employee with new commissions
-      const response = await fetch(`https://lms-f679.onrender.com/api/admin/employees/${employeeId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees/${employeeId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

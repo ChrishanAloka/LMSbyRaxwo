@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './ClassPage.css';
 
 const ClassPage = () => {
@@ -53,7 +54,7 @@ const ClassPage = () => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       if (data.success) {
         setSubjects(data.data);
@@ -68,7 +69,7 @@ const ClassPage = () => {
 
   const fetchAllClasses = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/classes', {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -117,7 +118,7 @@ const ClassPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/subjects/${selectedSubject._id}/start-class`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects/${selectedSubject._id}/start-class`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ const ClassPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${selectedClassForEdit._id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${selectedClassForEdit._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -210,7 +211,7 @@ const ClassPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${classId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${classId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +276,7 @@ const ClassPage = () => {
       const queryParam = isLikelyId ? 'studentId' : 'studentName';
       
       const response = await fetch(
-        `https://lms-f679.onrender.com/api/attempts/attendance/weekly?${queryParam}=${encodeURIComponent(searchTerm)}&period=${attendancePeriod}`,
+        `${API_CONFIG.API_URL}/attempts/attendance/weekly?${queryParam}=${encodeURIComponent(searchTerm)}&period=${attendancePeriod}`,
         {
           method: 'GET',
           headers: {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './StudentsPage.css';
 
 const StudentsPage = () => {
@@ -38,7 +39,7 @@ const StudentsPage = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/students', {
+      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -54,7 +55,7 @@ const StudentsPage = () => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       if (data.success) {
         setSubjects(data.data);
@@ -348,8 +349,8 @@ const StudentsPage = () => {
 
     try {
       const url = editingStudent 
-        ? `https://lms-f679.onrender.com/api/students/${editingStudent._id}`
-        : 'https://lms-f679.onrender.com/api/students';
+        ? `${API_CONFIG.API_URL}/students/${editingStudent._id}`
+        : `${API_CONFIG.API_URL}/students`;
       
       const method = editingStudent ? 'PUT' : 'POST';
 
@@ -432,7 +433,7 @@ const StudentsPage = () => {
     if (!window.confirm('Are you sure you want to delete this student?')) return;
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/students/${id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/students/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

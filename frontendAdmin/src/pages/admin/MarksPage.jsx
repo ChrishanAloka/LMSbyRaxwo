@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './MarksPage.css';
 
 const MarksPage = () => {
@@ -29,7 +30,7 @@ const MarksPage = () => {
   const fetchSubjects = async () => {
     setLoadingSubjects(true);
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       
       if (data.success && data.data && data.data.length > 0) {
@@ -63,7 +64,7 @@ const MarksPage = () => {
 
   const fetchMarks = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/marks', {
+      const response = await fetch(`${API_CONFIG.API_URL}/marks`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -89,7 +90,7 @@ const MarksPage = () => {
     setSubjectMarks([]);
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/marks/validate-student/${studentIdInput.trim()}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/marks/validate-student/${studentIdInput.trim()}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -190,8 +191,8 @@ const MarksPage = () => {
       }));
 
       const url = editingMarks 
-        ? `https://lms-f679.onrender.com/api/marks/${editingMarks._id}`
-        : 'https://lms-f679.onrender.com/api/marks';
+        ? `${API_CONFIG.API_URL}/marks/${editingMarks._id}`
+        : `${API_CONFIG.API_URL}/marks`;
       
       const method = editingMarks ? 'PUT' : 'POST';
 
@@ -256,7 +257,7 @@ const MarksPage = () => {
     if (!window.confirm('Are you sure you want to delete this marks record?')) return;
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/marks/${id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/marks/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`

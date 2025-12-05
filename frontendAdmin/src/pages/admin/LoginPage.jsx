@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import API_CONFIG from '../../config/api';
 import './LoginPage.css';
 
 const LoginPage = () => {
@@ -25,7 +26,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/auth/login', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

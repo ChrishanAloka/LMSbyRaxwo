@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
+import API_CONFIG from '../../config/api';
 import './ClassesPage.css';
 import teacherIcon from '../../assets/teacher.png';
 import dateIcon from '../../assets/date.png';
@@ -76,7 +77,7 @@ const ClassesPage = () => {
 
   const fetchClasses = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/classes', {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -113,7 +114,7 @@ const ClassesPage = () => {
     }
 
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/attempts', {
+      const response = await fetch(`${API_CONFIG.API_URL}/attempts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -159,7 +160,7 @@ const ClassesPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/attempts/${classId}/${studentId}/leave`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/attempts/${classId}/${studentId}/leave`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -193,7 +194,7 @@ const ClassesPage = () => {
 
   const checkAttemptStatus = async (classId, studentId) => {
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/attempts/check/${classId}/${studentId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/attempts/check/${classId}/${studentId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -252,7 +253,7 @@ const ClassesPage = () => {
                 {classItem.subjectId?.image && (
                   <div className="class-image-container">
                     <img 
-                      src={`https://lms-f679.onrender.com${classItem.subjectId.image}`} 
+                      src={`${API_CONFIG.API_URL}${classItem.subjectId.image}`} 
                       alt={classItem.subjectId.name}
                       className="class-image"
                     />

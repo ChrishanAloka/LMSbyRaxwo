@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import revenueIcon from '../../assets/revenue.png';
 import expensesIcon from '../../assets/expenses (2).png';
 import employeeSalaryIcon from '../../assets/employeeSalary.png';
@@ -49,7 +50,7 @@ const IncomePage = () => {
         params.append('months', selectedMonths.join(','));
       }
 
-      const url = `https://lms-f679.onrender.com/api/income/statistics${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `${API_CONFIG.API_URL}/income/statistics${params.toString() ? '?' + params.toString() : ''}`;
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`

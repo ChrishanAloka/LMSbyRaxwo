@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './ExtraIncomePage.css';
 
-const API_BASE = 'https://lms-f679.onrender.com/api/extra-income';
+const API_BASE = `${API_CONFIG.API_URL}/extra-income`;
 
 const monthOptions = [
   'January','February','March','April','May','June',

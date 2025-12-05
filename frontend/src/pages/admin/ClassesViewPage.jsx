@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './ClassesViewPage.css';
 
 const ClassesViewPage = () => {
@@ -45,7 +46,7 @@ const ClassesViewPage = () => {
     setLoading(true);
     try {
       // Include deleted classes in view my classes
-      const response = await fetch('https://lms-f679.onrender.com/api/classes?includeDeleted=true', {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes?includeDeleted=true`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ const ClassesViewPage = () => {
     const counts = {};
     for (const classItem of classList) {
       try {
-        const response = await fetch(`https://lms-f679.onrender.com/api/attempts/class/${classItem._id}`, {
+        const response = await fetch(`${API_CONFIG.API_URL}/attempts/class/${classItem._id}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -140,7 +141,7 @@ const ClassesViewPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${selectedClassForEdit._id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${selectedClassForEdit._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -170,7 +171,7 @@ const ClassesViewPage = () => {
 
   const handleStartBreak = async () => {
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${selectedClassForEdit._id}/break/start`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${selectedClassForEdit._id}/break/start`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +196,7 @@ const ClassesViewPage = () => {
 
   const handleEndBreak = async () => {
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${selectedClassForEdit._id}/break/end`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${selectedClassForEdit._id}/break/end`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -224,7 +225,7 @@ const ClassesViewPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${classId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${classId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -252,7 +253,7 @@ const ClassesViewPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${classId}/remove`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${classId}/remove`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -280,7 +281,7 @@ const ClassesViewPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${classId}/start`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${classId}/start`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -308,7 +309,7 @@ const ClassesViewPage = () => {
     }
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/classes/${classId}/close`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/classes/${classId}/close`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -399,7 +400,7 @@ const ClassesViewPage = () => {
 
     try {
       // Get all attempts (active, left, and attendance status) - include all for attendance view
-      const response = await fetch(`https://lms-f679.onrender.com/api/attempts/class/${classId}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/attempts/class/${classId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'

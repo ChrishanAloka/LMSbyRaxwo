@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './SubjectsPage.css';
 
 const SubjectsPage = () => {
@@ -28,7 +29,7 @@ const SubjectsPage = () => {
 
   const fetchSubjects = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/subjects');
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects`);
       const data = await response.json();
       if (data.success) {
         setSubjects(data.data);
@@ -42,7 +43,7 @@ const SubjectsPage = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await fetch('https://lms-f679.onrender.com/api/admin/employees', {
+      const response = await fetch(`${API_CONFIG.API_URL}/admin/employees`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -73,8 +74,8 @@ const SubjectsPage = () => {
 
     try {
       const url = editingSubject
-        ? `https://lms-f679.onrender.com/api/subjects/${editingSubject._id}`
-        : 'https://lms-f679.onrender.com/api/subjects';
+        ? `${API_CONFIG.API_URL}/subjects/${editingSubject._id}`
+        : `${API_CONFIG.API_URL}/subjects`;
       
       const method = editingSubject ? 'PUT' : 'POST';
       
@@ -132,7 +133,7 @@ const SubjectsPage = () => {
     if (!window.confirm('Are you sure you want to delete this subject?')) return;
 
     try {
-      const response = await fetch(`https://lms-f679.onrender.com/api/subjects/${id}`, {
+      const response = await fetch(`${API_CONFIG.API_URL}/subjects/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -286,7 +287,7 @@ const SubjectsPage = () => {
                       onChange={handleInputChange}
                       required
                     >
-                      <option value="">Select a teacher</option>
+                      <option value="" disabled>Select a teacher</option>
                       {employees.map((teacher) => (
                         <option key={teacher._id} value={teacher._id}>
                           {teacher.name}
@@ -371,7 +372,7 @@ const SubjectsPage = () => {
                   <div className="subject-image-container">
                     <img 
                       src={subject.image.startsWith('/uploads/') 
-                        ? `https://lms-f679.onrender.com${subject.image}` 
+                        ? `${API_CONFIG.BASE_URL}${subject.image}` 
                         : subject.image} 
                       alt={subject.name} 
                       className="subject-image" 

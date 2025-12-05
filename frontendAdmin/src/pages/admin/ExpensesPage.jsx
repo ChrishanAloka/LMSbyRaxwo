@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
+import API_CONFIG from '../../config/api';
 import './ExpensesPage.css';
 
-const API_BASE = 'https://lms-f679.onrender.com/api/expenses';
+const API_BASE = `${API_CONFIG.API_URL}/expenses`;
 
 const monthOptions = [
   'January','February','March','April','May','June','July','August','September','October','November','December'

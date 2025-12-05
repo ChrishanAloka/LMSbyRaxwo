@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 export const connectDB = async () => {
   try {
     // Try the SRV connection first
-    const uri = process.env.MONGO_URI || "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/?appName=LMS";
+    const uri = process.env.MONGO_URI || "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/lms";
     // const uri = "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/?appName=LMS";
 
     await mongoose.connect(uri, {
