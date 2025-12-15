@@ -41,7 +41,18 @@ export const getIncomeStatistics = async (req, res) => {
     let students = [];
     if (months) {
       const monthArray = Array.isArray(months) ? months : months.split(',');
-      const payments = await Payment.find({ month: { $in: monthArray.map(m => m.trim()) } });
+      // Use regex to match if any of the selected months are included in comma-separated month strings
+      // This handles cases where a payment has "January, February" and user selects "January"
+      const monthRegex = monthArray.map(m => {
+        const trimmedMonth = m.trim();
+        // Escape special regex characters in the month name
+        const escapedMonth = trimmedMonth.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Match the month when it appears as a complete value in a comma-separated list
+        return new RegExp(`(^|,\\s*)${escapedMonth}(\\s*,|$)`, 'i');
+      });
+      const payments = await Payment.find({ 
+        $or: monthRegex.map(regex => ({ month: { $regex: regex } }))
+      });
       totalStudentPayments = payments.reduce((sum, payment) => sum + (payment.totalAmount || 0), 0);
     } else {
       // If no month filter, use all student totalPrice (for backward compatibility)

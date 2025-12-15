@@ -17,6 +17,7 @@ const ClassesPage = () => {
   const [showStudentIdModal, setShowStudentIdModal] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [studentIdInput, setStudentIdInput] = useState('');
+  const [studentNameInput, setStudentNameInput] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
@@ -104,12 +105,18 @@ const ClassesPage = () => {
     setSelectedClassId(classId);
     setShowStudentIdModal(true);
     setStudentIdInput('');
+    setStudentNameInput('');
     setErrorMessage('');
   };
 
   const handleAttemptClass = async () => {
     if (!studentIdInput.trim()) {
       setErrorMessage('Please enter your student ID');
+      return;
+    }
+
+    if (!studentNameInput.trim()) {
+      setErrorMessage('Please enter your name');
       return;
     }
 
@@ -121,7 +128,8 @@ const ClassesPage = () => {
         },
         body: JSON.stringify({
           classId: selectedClassId,
-          studentId: studentIdInput.trim()
+          studentId: studentIdInput.trim(),
+          studentName: studentNameInput.trim()
         })
       });
 
@@ -142,11 +150,12 @@ const ClassesPage = () => {
         
         setShowStudentIdModal(false);
         setStudentIdInput('');
+        setStudentNameInput('');
         setErrorMessage('');
         fetchClasses(); // Refresh classes to update counts
         alert('Successfully attempted class!');
       } else {
-        setErrorMessage(data.message || 'Invalid student ID');
+        setErrorMessage(data.message || 'Invalid student ID or name');
       }
     } catch (err) {
       console.error('Error attempting class:', err);
@@ -253,9 +262,13 @@ const ClassesPage = () => {
                 {classItem.subjectId?.image && (
                   <div className="class-image-container">
                     <img 
-                      src={`${API_CONFIG.API_URL}${classItem.subjectId.image}`} 
+                      src={`${API_CONFIG.BASE_URL}${classItem.subjectId.image}`} 
                       alt={classItem.subjectId.name}
                       className="class-image"
+                      onError={(e) => {
+                        console.error('Image failed to load:', `${API_CONFIG.BASE_URL}${classItem.subjectId.image}`);
+                        e.target.style.display = 'none';
+                      }}
                     />
                   </div>
                 )}
@@ -344,11 +357,11 @@ const ClassesPage = () => {
         )}
       </main>
 
-      {/* Student ID Modal */}
+      {/* Student ID and Name Modal */}
       {showStudentIdModal && (
         <div className="modal-overlay" onClick={() => setShowStudentIdModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Enter Student ID</h2>
+            <h2>Enter Student Information</h2>
             <div className="modal-body">
               <div className="form-group">
                 <label htmlFor="studentId">Student ID *</label>
@@ -363,10 +376,23 @@ const ClassesPage = () => {
                   placeholder="Enter your student ID"
                   autoFocus
                 />
-                {errorMessage && (
-                  <span className="error-message">{errorMessage}</span>
-                )}
               </div>
+              <div className="form-group">
+                <label htmlFor="studentName">Student Name *</label>
+                <input
+                  type="text"
+                  id="studentName"
+                  value={studentNameInput}
+                  onChange={(e) => {
+                    setStudentNameInput(e.target.value);
+                    setErrorMessage('');
+                  }}
+                  placeholder="Enter first name, last name, or full name"
+                />
+              </div>
+              {errorMessage && (
+                <span className="error-message">{errorMessage}</span>
+              )}
             </div>
             <div className="modal-actions">
               <button className="cancel-btn" onClick={() => setShowStudentIdModal(false)}>

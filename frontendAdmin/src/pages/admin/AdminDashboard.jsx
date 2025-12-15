@@ -159,7 +159,24 @@ const AdminDashboard = () => {
         (cls) => cls.status === 'ongoing' && !cls.isDeleted
       );
 
-      const paidStudents = students.filter((student) => (student.totalPrice || 0) > 0).length;
+      // Create a Set of student IDs that have payment records
+      const studentsWithPayments = new Set();
+      payments.forEach((payment) => {
+        const studentId = typeof payment.studentId === 'object' 
+          ? payment.studentId._id?.toString() || payment.studentId._id
+          : payment.studentId?.toString() || payment.studentId;
+        if (studentId) {
+          studentsWithPayments.add(studentId);
+        }
+      });
+
+      // Count paid students as those who have at least one payment record
+      const paidStudents = students.filter((student) => {
+        const studentId = student._id?.toString() || student._id;
+        return studentsWithPayments.has(studentId);
+      }).length;
+      
+      // Unpaid students are those without any payment records
       const unpaidStudents = students.length - paidStudents;
 
       setSummary({
@@ -179,7 +196,14 @@ const AdminDashboard = () => {
       const courseStats = new Map();
 
       payments.forEach((payment) => {
-        (payment.subjects || []).forEach((subjectRef) => {
+        const paymentSubjects = payment.subjects || [];
+        const subjectCount = paymentSubjects.length;
+        const totalAmount = payment.totalAmount || 0;
+        
+        // Calculate amount per subject (divide payment amount equally among subjects)
+        const amountPerSubject = subjectCount > 0 ? totalAmount / subjectCount : 0;
+
+        paymentSubjects.forEach((subjectRef) => {
           const subjectId = typeof subjectRef === 'string' ? subjectRef : subjectRef?._id;
           if (!subjectId) {
             return;
@@ -189,6 +213,7 @@ const AdminDashboard = () => {
             (typeof subjectRef === 'object' && subjectRef !== null ? subjectRef : subjectLookup.get(subjectId)) ||
             {};
 
+          // Use subject's default price for display, but actual payment amount for revenue
           const subjectPrice = subjectInfo.price || 0;
 
           const existing = courseStats.get(subjectId) || {
@@ -199,12 +224,12 @@ const AdminDashboard = () => {
             image: subjectInfo.image || ''
           };
 
-          // Calculate revenue based on subject's actual price
-          // Each payment for this subject contributes its price to revenue
+          // Calculate revenue based on actual payment amount divided by subjects
+          // Each enrollment counts as 1, and contributes its share of the payment
           courseStats.set(subjectId, {
             ...existing,
             enrollmentCount: (existing.enrollmentCount || 0) + 1,
-            revenue: (existing.revenue || 0) + subjectPrice
+            revenue: (existing.revenue || 0) + amountPerSubject
           });
         });
       });
@@ -236,7 +261,7 @@ const AdminDashboard = () => {
     }).format(value || 0);
   };
 
-  const createStudentReport = (students, filename) => {
+  const createStudentReport = (students, filename, paymentMap = null) => {
     if (!studentsList.length) {
       alert('No student data available.');
       return;
@@ -260,13 +285,26 @@ const AdminDashboard = () => {
             .join(', ')
         : '';
 
+      // Get payment type from payment records if paymentMap is provided
+      let paymentType = '';
+      if (paymentMap) {
+        const studentId = student._id?.toString() || student._id;
+        const paymentInfo = paymentMap.get(studentId);
+        if (paymentInfo && paymentInfo.paymentMethod) {
+          paymentType = paymentInfo.paymentMethod;
+        }
+      } else {
+        // Fallback to student's paymentType if no paymentMap
+        paymentType = student.paymentType || '';
+      }
+
       return [
         student.studentId || '',
         student.name || '',
         student.email || '',
         student.mobile || '',
         subjectNames,
-        student.paymentType || ''
+        paymentType
       ];
     });
 
@@ -292,18 +330,87 @@ const AdminDashboard = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const handleDownloadNonPaidReport = () => {
-    createStudentReport(
-      (students) => students.filter((student) => !student.totalPrice || Number(student.totalPrice) <= 0),
-      'non-paid-students'
-    );
+  const handleDownloadNonPaidReport = async () => {
+    // Fetch payments to determine which students have payment records
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const paymentsResponse = await fetch(`${API_CONFIG.API_URL}/payments`, { headers });
+      const paymentsData = await paymentsResponse.json();
+      const payments = paymentsData.success ? paymentsData.data || [] : [];
+
+      // Create a Set of student IDs that have payment records
+      const studentsWithPayments = new Set();
+      payments.forEach((payment) => {
+        const studentId = typeof payment.studentId === 'object' 
+          ? payment.studentId._id?.toString() || payment.studentId._id
+          : payment.studentId?.toString() || payment.studentId;
+        if (studentId) {
+          studentsWithPayments.add(studentId);
+        }
+      });
+
+      createStudentReport(
+        (students) => students.filter((student) => {
+          const studentId = student._id?.toString() || student._id;
+          return !studentsWithPayments.has(studentId);
+        }),
+        'non-paid-students'
+      );
+    } catch (err) {
+      console.error('Error fetching payments for report:', err);
+      alert('Failed to generate report. Please try again.');
+    }
   };
 
-  const handleDownloadPaidReport = () => {
-    createStudentReport(
-      (students) => students.filter((student) => Number(student.totalPrice || 0) > 0),
-      'paid-students'
-    );
+  const handleDownloadPaidReport = async () => {
+    // Fetch payments to determine which students have payment records
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const paymentsResponse = await fetch(`${API_CONFIG.API_URL}/payments`, { headers });
+      const paymentsData = await paymentsResponse.json();
+      const payments = paymentsData.success ? paymentsData.data || [] : [];
+
+      // Create a Set of student IDs that have payment records
+      const studentsWithPayments = new Set();
+      // Create a Map of student ID to payment methods (collect all unique payment methods)
+      const studentPaymentMap = new Map();
+      
+      payments.forEach((payment) => {
+        const studentId = typeof payment.studentId === 'object' 
+          ? payment.studentId._id?.toString() || payment.studentId._id
+          : payment.studentId?.toString() || payment.studentId;
+        if (studentId) {
+          studentsWithPayments.add(studentId);
+          // Collect all payment methods for this student
+          if (!studentPaymentMap.has(studentId)) {
+            studentPaymentMap.set(studentId, new Set());
+          }
+          if (payment.paymentMethod) {
+            studentPaymentMap.get(studentId).add(payment.paymentMethod);
+          }
+        }
+      });
+
+      // Convert Sets to comma-separated strings for the report
+      const studentPaymentMethodMap = new Map();
+      studentPaymentMap.forEach((methods, studentId) => {
+        studentPaymentMethodMap.set(studentId, {
+          paymentMethod: Array.from(methods).join(', ')
+        });
+      });
+
+      createStudentReport(
+        (students) => students.filter((student) => {
+          const studentId = student._id?.toString() || student._id;
+          return studentsWithPayments.has(studentId);
+        }),
+        'paid-students',
+        studentPaymentMethodMap
+      );
+    } catch (err) {
+      console.error('Error fetching payments for report:', err);
+      alert('Failed to generate report. Please try again.');
+    }
   };
 
   const handleGenerateFilteredReport = () => {
@@ -680,7 +787,7 @@ const AdminDashboard = () => {
                             </p>
                           </div>
                           <p className="top-course-price">
-                            LKR {formatCurrency(course.price || 0)}
+                            {/* LKR {formatCurrency(course.price || 0)} */}
                           </p>
                         </div>
                       );

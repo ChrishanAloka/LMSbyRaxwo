@@ -14,16 +14,21 @@ const CourseCard = ({
   }
 }) => {
   const courseTitle = course.name || course.title;
+  const courseImage =
+    course.image ||
+    course.imageUrl ||
+    course.thumbnail ||
+    (course.media && course.media.url);
   
   return (
     <div className="course-card">
       <div className="course-image-container">
         <img 
           src={
-            course.image
-              ? (course.image.startsWith('/uploads/') 
-                  ? `${API_CONFIG.BASE_URL}${course.image}` 
-                  : course.image)
+            courseImage
+              ? (String(courseImage).startsWith('/uploads/') 
+                  ? `${API_CONFIG.BASE_URL}${courseImage}` 
+                  : courseImage)
               : "https://via.placeholder.com/300x200?text=Course+Image"
           }
           alt={courseTitle} 

@@ -11,6 +11,10 @@ const examSchema = new mongoose.Schema({
     required: [true, 'Student ID Number is required'],
     trim: true
   },
+  title: {
+    type: String,
+    trim: true
+  },
   firstName: {
     type: String,
     required: [true, 'First Name is required'],
@@ -19,6 +23,69 @@ const examSchema = new mongoose.Schema({
   lastName: {
     type: String,
     required: [true, 'Last Name is required'],
+    trim: true
+  },
+  otherNames: {
+    type: String,
+    trim: true
+  },
+  familyName: {
+    type: String,
+    trim: true
+  },
+  email: {
+    type: String,
+    trim: true
+  },
+  dateOfBirth: {
+    type: Date
+  },
+  birthDay: {
+    type: String,
+    trim: true
+  },
+  birthMonth: {
+    type: String,
+    trim: true
+  },
+  birthYear: {
+    type: String,
+    trim: true
+  },
+  gender: {
+    type: String,
+    trim: true
+  },
+  telephone: {
+    type: String,
+    trim: true
+  },
+  mobile: {
+    type: String,
+    trim: true
+  },
+  specialNeeds: {
+    type: String,
+    trim: true
+  },
+  specialNeedsDetails: {
+    type: String,
+    trim: true
+  },
+  guardianFirstName: {
+    type: String,
+    trim: true
+  },
+  guardianLastName: {
+    type: String,
+    trim: true
+  },
+  guardianTelephone: {
+    type: String,
+    trim: true
+  },
+  guardianMobile: {
+    type: String,
     trim: true
   },
   ukVisa: {

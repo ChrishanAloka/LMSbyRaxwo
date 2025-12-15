@@ -8,6 +8,7 @@ export const getStudents = async (req, res) => {
   try {
     const students = await Student.find()
       .populate('subjects', 'name price')
+      .populate('subjectPrices.subjectId', 'name price')
       .sort({ createdAt: -1 });
     
     res.status(200).json({
@@ -29,7 +30,8 @@ export const getStudents = async (req, res) => {
 export const getStudent = async (req, res) => {
   try {
     const student = await Student.findById(req.params.id)
-      .populate('subjects', 'name price');
+      .populate('subjects', 'name price')
+      .populate('subjectPrices.subjectId', 'name price');
     
     if (!student) {
       return res.status(404).json({

@@ -7,6 +7,16 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Helper function to resolve upload file path
+const resolveUploadPath = (imagePath) => {
+  if (!imagePath || !imagePath.startsWith('/uploads/')) {
+    return null;
+  }
+  // Remove leading '/' and join with project root
+  const relativePath = imagePath.substring(1); // Remove leading '/'
+  return path.join(__dirname, '..', relativePath);
+};
+
 // @desc    Get all subjects
 // @route   GET /api/subjects
 // @access  Public
@@ -142,24 +152,22 @@ export const updateSubject = async (req, res) => {
     
     if (req.file) {
       // New file uploaded - delete old image if it was a local file
-      if (oldImage && oldImage.startsWith('/uploads/')) {
-        const oldImagePath = path.join(__dirname, '..', oldImage);
-        if (fs.existsSync(oldImagePath)) {
-          try {
-            fs.unlinkSync(oldImagePath);
-            console.log(`Deleted old image file: ${oldImagePath}`);
-          } catch (fileError) {
-            console.error(`Error deleting old image file: ${fileError.message}`);
-            // Continue with update even if old file deletion fails
-          }
+      const oldImagePath = resolveUploadPath(oldImage);
+      if (oldImagePath && fs.existsSync(oldImagePath)) {
+        try {
+          fs.unlinkSync(oldImagePath);
+          console.log(`Deleted old image file: ${oldImagePath}`);
+        } catch (fileError) {
+          console.error(`Error deleting old image file: ${fileError.message}`);
+          // Continue with update even if old file deletion fails
         }
       }
       subject.image = `/uploads/${req.file.filename}`;
     } else if (req.body.image) {
       // If new image URL is provided and it's different from old one, delete old local file
       if (oldImage && oldImage.startsWith('/uploads/') && oldImage !== req.body.image) {
-        const oldImagePath = path.join(__dirname, '..', oldImage);
-        if (fs.existsSync(oldImagePath)) {
+        const oldImagePath = resolveUploadPath(oldImage);
+        if (oldImagePath && fs.existsSync(oldImagePath)) {
           try {
             fs.unlinkSync(oldImagePath);
             console.log(`Deleted old image file: ${oldImagePath}`);
@@ -208,9 +216,8 @@ export const deleteSubject = async (req, res) => {
     }
 
     // Delete the image file if it's a local upload
-    if (subject.image && subject.image.startsWith('/uploads/')) {
-      const imagePath = path.join(__dirname, '..', subject.image);
-      
+    const imagePath = resolveUploadPath(subject.image);
+    if (imagePath) {
       // Check if file exists and delete it
       if (fs.existsSync(imagePath)) {
         try {
@@ -220,6 +227,8 @@ export const deleteSubject = async (req, res) => {
           console.error(`Error deleting image file: ${fileError.message}`);
           // Continue with subject deletion even if file deletion fails
         }
+      } else {
+        console.log(`Image file not found at: ${imagePath} (may have been already deleted)`);
       }
     }
 

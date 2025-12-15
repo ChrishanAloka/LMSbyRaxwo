@@ -25,10 +25,11 @@ const PaymentPage = () => {
   });
   const [editFormData, setEditFormData] = useState({
     selectedSubjects: [],
-    month: '',
+    selectedMonths: [],
     paymentMethod: '',
     paymentDate: ''
   });
+  const [editTotalFee, setEditTotalFee] = useState(0);
   const [totalFee, setTotalFee] = useState(0);
 
   const token = localStorage.getItem('adminToken');
@@ -66,6 +67,38 @@ const PaymentPage = () => {
       setTotalFee(0);
     }
   }, [formData.selectedSubjects, formData.selectedMonths, subjects, selectedStudent]);
+
+  useEffect(() => {
+    // Calculate total fee for edit form when selected subjects or months change
+    if (editFormData.selectedSubjects && editFormData.selectedSubjects.length > 0 && editingPayment && editFormData.selectedMonths && editFormData.selectedMonths.length > 0) {
+      const editStudent = students.find(s => {
+        if (typeof editingPayment.studentId === 'object') {
+          return s._id === editingPayment.studentId._id;
+        }
+        return s._id === editingPayment.studentId;
+      });
+
+      const subjectTotal = editFormData.selectedSubjects.reduce((sum, subjectId) => {
+        // First try to get price from student's subjectPrices
+        if (editStudent && editStudent.subjectPrices && Array.isArray(editStudent.subjectPrices)) {
+          const subjectPrice = editStudent.subjectPrices.find(sp => {
+            const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
+            return spId === subjectId;
+          });
+          if (subjectPrice) {
+            return sum + (subjectPrice.price || 0);
+          }
+        }
+        // Fallback to subject's default price if no student-specific price found
+        const subject = subjects.find(s => s._id === subjectId);
+        return sum + (subject ? (subject.price || 0) : 0);
+      }, 0);
+      // Multiply by number of selected months
+      setEditTotalFee(subjectTotal * editFormData.selectedMonths.length);
+    } else {
+      setEditTotalFee(0);
+    }
+  }, [editFormData.selectedSubjects, editFormData.selectedMonths, subjects, editingPayment, students]);
 
   const fetchStudents = async () => {
     try {
@@ -321,9 +354,14 @@ const PaymentPage = () => {
       return typeof subject === 'object' ? subject._id : subject;
     }) || [];
 
+    // Parse month string (e.g., "January, February") into array
+    const selectedMonths = payment.month 
+      ? payment.month.split(',').map(m => m.trim()).filter(m => m)
+      : [];
+
     setEditFormData({
       selectedSubjects: subjectIds,
-      month: payment.month || '',
+      selectedMonths: selectedMonths,
       paymentMethod: payment.paymentMethod || '',
       paymentDate: paymentDate
     });
@@ -344,8 +382,8 @@ const PaymentPage = () => {
       return;
     }
 
-    if (!editFormData.month) {
-      setError('Please select a month');
+    if (!editFormData.selectedMonths || editFormData.selectedMonths.length === 0) {
+      setError('Please select at least one month');
       setLoading(false);
       return;
     }
@@ -363,34 +401,13 @@ const PaymentPage = () => {
     }
 
     try {
-      // Calculate total amount from selected subjects using student's subjectPrices
-      const editStudent = students.find(s => {
-        if (typeof editingPayment.studentId === 'object') {
-          return s._id === editingPayment.studentId._id;
-        }
-        return s._id === editingPayment.studentId;
-      });
-      
-      const editTotalFee = editFormData.selectedSubjects.reduce((sum, subjectId) => {
-        // First try to get price from student's subjectPrices
-        if (editStudent && editStudent.subjectPrices && Array.isArray(editStudent.subjectPrices)) {
-          const subjectPrice = editStudent.subjectPrices.find(sp => {
-            const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
-            return spId === subjectId;
-          });
-          if (subjectPrice) {
-            return sum + (subjectPrice.price || 0);
-          }
-        }
-        // Fallback to subject's default price if no student-specific price found
-        const subject = subjects.find(s => s._id === subjectId);
-        return sum + (subject ? (subject.price || 0) : 0);
-      }, 0);
+      // Join months with comma for multiple months (same as create)
+      const monthsCombined = (editFormData.selectedMonths || []).join(', ');
 
       const paymentData = {
         subjects: editFormData.selectedSubjects,
         totalAmount: editTotalFee,
-        month: editFormData.month,
+        month: monthsCombined,
         paymentMethod: editFormData.paymentMethod,
         paymentDate: editFormData.paymentDate
       };
@@ -410,6 +427,13 @@ const PaymentPage = () => {
         setSuccess('Payment updated successfully!');
         setShowEditModal(false);
         setEditingPayment(null);
+        setEditFormData({
+          selectedSubjects: [],
+          selectedMonths: [],
+          paymentMethod: '',
+          paymentDate: ''
+        });
+        setEditTotalFee(0);
         fetchPayments();
         setTimeout(() => setSuccess(''), 3000);
       } else {
@@ -465,6 +489,19 @@ const PaymentPage = () => {
         selectedSubjects: isSelected
           ? prev.selectedSubjects.filter(id => id !== subjectId)
           : [...prev.selectedSubjects, subjectId]
+      };
+    });
+  };
+
+  const handleEditMonthToggle = (month) => {
+    setEditFormData(prev => {
+      const currentMonths = prev.selectedMonths || [];
+      const isSelected = currentMonths.includes(month);
+      return {
+        ...prev,
+        selectedMonths: isSelected
+          ? currentMonths.filter(m => m !== month)
+          : [...currentMonths, month]
       };
     });
   };
@@ -845,7 +882,17 @@ const PaymentPage = () => {
 
           {/* Edit Payment Modal */}
           {showEditModal && editingPayment && (
-            <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+            <div className="modal-overlay" onClick={() => {
+              setShowEditModal(false);
+              setEditingPayment(null);
+              setEditFormData({
+                selectedSubjects: [],
+                selectedMonths: [],
+                paymentMethod: '',
+                paymentDate: ''
+              });
+              setEditTotalFee(0);
+            }}>
               <div className="modal-content payment-edit-modal" onClick={(e) => e.stopPropagation()}>
                 <h2>Edit Payment</h2>
                 <p className="modal-subtitle">
@@ -876,50 +923,40 @@ const PaymentPage = () => {
                         </div>
                       )}
                     </div>
-                    {editFormData.selectedSubjects.length > 0 && (
+                    {editFormData.selectedSubjects && editFormData.selectedSubjects.length > 0 && editFormData.selectedMonths && editFormData.selectedMonths.length > 0 && (
                       <div className="total-fee-display">
-                        <strong>
-                          Total Fee: LKR {editFormData.selectedSubjects.reduce((sum, subjectId) => {
-                            const editStudent = students.find(s => {
-                              if (typeof editingPayment.studentId === 'object') {
-                                return s._id === editingPayment.studentId._id;
-                              }
-                              return s._id === editingPayment.studentId;
-                            });
-                            
-                            // First try to get price from student's subjectPrices
-                            if (editStudent && editStudent.subjectPrices && Array.isArray(editStudent.subjectPrices)) {
-                              const subjectPrice = editStudent.subjectPrices.find(sp => {
-                                const spId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
-                                return spId === subjectId;
-                              });
-                              if (subjectPrice) {
-                                return sum + (subjectPrice.price || 0);
-                              }
-                            }
-                            // Fallback to subject's default price
-                            const subject = subjects.find(s => s._id === subjectId);
-                            return sum + (subject ? (subject.price || 0) : 0);
-                          }, 0).toFixed(2)}
-                        </strong>
+                        <div className="fee-breakdown">
+                          <div>Price per month: <strong>LKR {((editTotalFee / (editFormData.selectedMonths?.length || 1)) || 0).toFixed(2)}</strong></div>
+                          <div>Number of months: <strong>{editFormData.selectedMonths?.length || 0}</strong></div>
+                        </div>
+                        <div className="fee-total">
+                          <strong>Total Fee: LKR {editTotalFee.toFixed(2)}</strong>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="editMonth">Payment Month *</label>
-                    <select
-                      id="editMonth"
-                      name="month"
-                      value={editFormData.month}
-                      onChange={(e) => setEditFormData({ ...editFormData, month: e.target.value })}
-                      required
-                    >
-                      <option value="">Select Month</option>
-                      {months.map((month, index) => (
-                        <option key={index} value={month}>{month}</option>
-                      ))}
-                    </select>
+                    <label>Payment Month(s) *</label>
+                    <div className="months-selection">
+                      <div className="months-checkbox-list">
+                        {months.map((month, index) => (
+                          <label key={index} className="month-checkbox-item">
+                            <input
+                              type="checkbox"
+                              checked={editFormData.selectedMonths && editFormData.selectedMonths.includes(month)}
+                              onChange={() => handleEditMonthToggle(month)}
+                            />
+                            <span>{month}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    {editFormData.selectedMonths && editFormData.selectedMonths.length > 0 && (
+                      <div className="selected-months-display">
+                        <small>Selected: {editFormData.selectedMonths.join(', ')}</small>
+                      </div>
+                    )}
                   </div>
 
                   <div className="form-group">
@@ -961,6 +998,13 @@ const PaymentPage = () => {
                       onClick={() => {
                         setShowEditModal(false);
                         setEditingPayment(null);
+                        setEditFormData({
+                          selectedSubjects: [],
+                          selectedMonths: [],
+                          paymentMethod: '',
+                          paymentDate: ''
+                        });
+                        setEditTotalFee(0);
                         setError('');
                         setSuccess('');
                       }}

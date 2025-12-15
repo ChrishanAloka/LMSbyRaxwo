@@ -15,12 +15,26 @@ const ExamPage = () => {
   const [validatingStudent, setValidatingStudent] = useState(false);
   const [studentValidationError, setStudentValidationError] = useState('');
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    exam: '',
+    examDate: '',
+    title: '',
+    otherNames: '',
+    familyName: '',
+    email: '',
+    birthDay: '',
+    birthMonth: '',
+    birthYear: '',
+    gender: '',
+    telephone: '',
+    mobile: '',
+    specialNeeds: '',
+    specialNeedsDetails: '',
+    guardianFirstName: '',
+    guardianLastName: '',
+    guardianTelephone: '',
+    guardianMobile: '',
     ukVisa: '',
-    exams: [],
-    candidateIdNumber: '',
-    examDate: ''
+    candidateIdNumber: ''
   });
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
@@ -58,18 +72,29 @@ const ExamPage = () => {
       return;
     }
 
-    // Create CSV content
+    // Create CSV content - columns ordered to match the table
     const headers = [
       'Student ID',
-      'Student Name',
-      'First Name',
-      'Last Name',
-      'Email',
-      'UK Visa',
-      'Exams',
+      'Exam',
       'Exam Date',
-      'Candidate ID Number',
-      'Created At'
+      'Title',
+      'Other Names',
+      'Family Name',
+      'Email',
+      'Day',
+      'Month',
+      'Year',
+      'Gender',
+      'Telephone',
+      'Mobile',
+      'Special Needs',
+      'Special Needs Details',
+      'Guardian FirstName',
+      'Guardian LastName',
+      'Guardian Telephone',
+      'Guardian Mobile',
+      'For Uk Visa',
+      'Candidate ID Number'
     ];
 
     const rows = examsToReport.map((exam) => {
@@ -79,22 +104,44 @@ const ExamPage = () => {
         examsList = exam.exams.map((ex) => {
           const subjectName = typeof ex.subjectId === 'object' ? ex.subjectId.name : ex.subjectName || '';
           return subjectName;
-        }).join('; ');
+        }).join(', ');
       } else if (exam.exam) {
         examsList = exam.exam;
       }
 
+      // derive day/month/year if provided as separate fields or from dateOfBirth
+      let day = exam.birthDay || '';
+      let month = exam.birthMonth || '';
+      let year = exam.birthYear || '';
+      if ((!day || !month || !year) && exam.dateOfBirth) {
+        const dob = new Date(exam.dateOfBirth);
+        day = day || dob.getDate().toString();
+        month = month || (dob.getMonth() + 1).toString();
+        year = year || dob.getFullYear().toString();
+      }
+
       return [
         exam.studentIdNumber || exam.studentId?.studentId || 'N/A',
-        exam.studentId?.name || 'N/A',
-        exam.firstName || 'N/A',
-        exam.lastName || 'N/A',
-        exam.studentId?.email || 'N/A',
-        exam.ukVisa || 'N/A',
         examsList || 'N/A',
         exam.examDate ? (formatDate(exam.examDate) || 'N/A') : 'N/A',
-        exam.candidateIdNumber || 'N/A',
-        formatDate(exam.createdAt) || 'N/A'
+        exam.title || 'N/A',
+        exam.otherNames || exam.firstName || 'N/A',
+        exam.familyName || exam.lastName || 'N/A',
+        exam.email || exam.studentId?.email || 'N/A',
+        day || 'N/A',
+        month || 'N/A',
+        year || 'N/A',
+        exam.gender || exam.studentId?.gender || 'N/A',
+        exam.telephone || 'N/A',
+        exam.mobile || exam.studentId?.mobile || 'N/A',
+        exam.specialNeeds || exam.studentId?.specialNeed || 'N/A',
+        exam.specialNeedsDetails || exam.studentId?.specialNeedsDetails || 'N/A',
+        exam.guardianFirstName || exam.studentId?.guardianFirstName || 'N/A',
+        exam.guardianLastName || exam.studentId?.guardianLastName || 'N/A',
+        exam.guardianTelephone || exam.studentId?.guardianTelephone || 'N/A',
+        exam.guardianMobile || 'N/A',
+        exam.ukVisa || 'N/A',
+        exam.candidateIdNumber || 'N/A'
       ];
     });
 
@@ -190,13 +237,60 @@ const ExamPage = () => {
           setStudentValidationError('');
           setShowForm(true);
           // Pre-fill form with student data
+          const nameParts = (student.name || '').trim().split(/\s+/);
+          const firstName = nameParts.shift() || '';
+          const lastName = nameParts.join(' ');
+          
+          // Extract date of birth components
+          let birthDay = '', birthMonth = '', birthYear = '';
+          if (student.birthday) {
+            const dob = new Date(student.birthday);
+            birthDay = dob.getDate().toString();
+            birthMonth = (dob.getMonth() + 1).toString();
+            birthYear = dob.getFullYear().toString();
+          }
+          
+          // Format mobile number for display
+          let mobileDisplay = '';
+          if (student.mobile) {
+            let mobile = student.mobile;
+            if (mobile.startsWith('+94')) {
+              mobile = mobile.substring(3);
+            } else if (mobile.startsWith('0')) {
+              mobile = mobile.substring(1);
+            }
+            mobileDisplay = mobile.replace(/\D/g, '');
+          }
+          
           setFormData({
-            firstName: '',
-            lastName: '',
+            exam: '',
+            examDate: '',
+            title: '',
+            otherNames: firstName,
+            familyName: lastName,
+            email: student.email || '',
+            birthDay: birthDay,
+            birthMonth: birthMonth,
+            birthYear: birthYear,
+            gender: student.gender || '',
+            telephone: '',
+            mobile: mobileDisplay,
+            specialNeeds: student.specialNeed || '',
+            specialNeedsDetails: student.specialNeedsDetails || '',
+            guardianFirstName: student.guardianFirstName || '',
+            guardianLastName: student.guardianLastName || '',
+            guardianTelephone: (() => {
+              let tel = student.guardianTelephone || '';
+              if (tel) {
+                if (tel.startsWith('+94')) tel = tel.substring(3);
+                else if (tel.startsWith('0')) tel = tel.substring(1);
+                tel = tel.replace(/\D/g, '');
+              }
+              return tel;
+            })(),
+            guardianMobile: '',
             ukVisa: '',
-            exams: [],
-            candidateIdNumber: '',
-            examDate: ''
+            candidateIdNumber: ''
           });
         } else {
           setStudentValidationError('Student ID not found. Please enter a valid Student ID.');
@@ -222,36 +316,81 @@ const ExamPage = () => {
     setError('');
   };
 
-  const handleExamSelect = (e) => {
-    const selectedSubjectId = e.target.value;
-    if (!selectedSubjectId) return;
-
-    const selectedSubject = availableSubjects.find(sub => sub.id === selectedSubjectId);
-    if (!selectedSubject) return;
-
-    // Check if already selected
-    const isAlreadySelected = formData.exams.some(exam => exam.subjectId === selectedSubjectId);
-    if (isAlreadySelected) return;
-
-    // Add to selected exams
+  // Handle mobile number input with +94 prefix
+  const handleMobileChange = (e) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d+]/g, '');
+    if (value.startsWith('+94')) {
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      value = value.substring(1);
+    }
+    value = value.replace(/\D/g, '');
     setFormData({
       ...formData,
-      exams: [...formData.exams, {
-        subjectId: selectedSubject.id,
-        subjectName: selectedSubject.name
-      }]
+      mobile: value
     });
     setError('');
-    
-    // Reset dropdown
-    e.target.value = '';
   };
 
-  const handleRemoveExam = (subjectId) => {
+  // Handle telephone number input with +94 prefix
+  const handleTelephoneChange = (e) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d+]/g, '');
+    if (value.startsWith('+94')) {
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      value = value.substring(1);
+    }
+    value = value.replace(/\D/g, '');
     setFormData({
       ...formData,
-      exams: formData.exams.filter(exam => exam.subjectId !== subjectId)
+      telephone: value
     });
+    setError('');
+  };
+
+  // Handle guardian telephone number input with +94 prefix
+  const handleGuardianTelephoneChange = (e) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d+]/g, '');
+    if (value.startsWith('+94')) {
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      value = value.substring(1);
+    }
+    value = value.replace(/\D/g, '');
+    setFormData({
+      ...formData,
+      guardianTelephone: value
+    });
+    setError('');
+  };
+
+  // Handle guardian mobile number input with +94 prefix
+  const handleGuardianMobileChange = (e) => {
+    let value = e.target.value;
+    value = value.replace(/[^\d+]/g, '');
+    if (value.startsWith('+94')) {
+      value = value.substring(3);
+    } else if (value.startsWith('0')) {
+      value = value.substring(1);
+    }
+    value = value.replace(/\D/g, '');
+    setFormData({
+      ...formData,
+      guardianMobile: value
+    });
+    setError('');
+  };
+
+  const handleExamSelect = (e) => {
+    const selectedSubjectId = e.target.value;
+    setFormData({
+      ...formData,
+      exam: selectedSubjectId
+    });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
@@ -266,23 +405,101 @@ const ExamPage = () => {
       return;
     }
 
-    if (!formData.firstName.trim()) {
-      setError('Please enter First Name');
+    // Validate required fields
+    if (!formData.exam) {
+      setError('Please select an exam');
       setLoading(false);
       return;
     }
 
-    if (!formData.lastName.trim()) {
-      setError('Please enter Last Name');
+    if (!formData.examDate) {
+      setError('Please select exam date');
       setLoading(false);
       return;
     }
 
-    if (!formData.exams || formData.exams.length === 0) {
-      setError('Please select at least one exam subject');
+    if (!formData.title.trim()) {
+      setError('Please enter title');
       setLoading(false);
       return;
     }
+
+    if (!formData.familyName.trim()) {
+      setError('Please enter family name');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setError('Please enter email address');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) {
+      setError('Please enter complete date of birth (Day, Month, Year)');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.gender) {
+      setError('Please select gender');
+      setLoading(false);
+      return;
+    }
+
+    if (!formData.mobile.trim()) {
+      setError('Please enter mobile number');
+      setLoading(false);
+      return;
+    }
+
+    // Format mobile numbers with +94 prefix
+    let formattedMobile = (formData.mobile || '').trim();
+    if (formattedMobile) {
+      formattedMobile = formattedMobile.replace(/\D/g, '');
+      if (formattedMobile.startsWith('0')) {
+        formattedMobile = formattedMobile.substring(1);
+      }
+      formattedMobile = '+94' + formattedMobile;
+    }
+
+    let formattedTelephone = (formData.telephone || '').trim();
+    if (formattedTelephone) {
+      formattedTelephone = formattedTelephone.replace(/\D/g, '');
+      if (formattedTelephone.startsWith('0')) {
+        formattedTelephone = formattedTelephone.substring(1);
+      }
+      formattedTelephone = '+94' + formattedTelephone;
+    }
+
+    let formattedGuardianTelephone = (formData.guardianTelephone || '').trim();
+    if (formattedGuardianTelephone) {
+      formattedGuardianTelephone = formattedGuardianTelephone.replace(/\D/g, '');
+      if (formattedGuardianTelephone.startsWith('0')) {
+        formattedGuardianTelephone = formattedGuardianTelephone.substring(1);
+      }
+      formattedGuardianTelephone = '+94' + formattedGuardianTelephone;
+    }
+
+    let formattedGuardianMobile = (formData.guardianMobile || '').trim();
+    if (formattedGuardianMobile) {
+      formattedGuardianMobile = formattedGuardianMobile.replace(/\D/g, '');
+      if (formattedGuardianMobile.startsWith('0')) {
+        formattedGuardianMobile = formattedGuardianMobile.substring(1);
+      }
+      formattedGuardianMobile = '+94' + formattedGuardianMobile;
+    }
+
+    // Convert single exam to exams array format for backend
+    const selectedSubject = availableSubjects.find(sub => sub.id === formData.exam);
+    const examsArray = selectedSubject ? [{
+      subjectId: selectedSubject.id,
+      subjectName: selectedSubject.name
+    }] : [];
+
+    // Build date of birth from day, month, year
+    const dateOfBirth = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
 
     try {
       const url = editingExam
@@ -300,13 +517,27 @@ const ExamPage = () => {
         body: JSON.stringify({
           studentId: validatedStudent._id,
           studentIdNumber: validatedStudent.studentId,
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
+          firstName: formData.otherNames.trim(),
+          lastName: formData.familyName.trim(),
+          title: formData.title.trim(),
+          otherNames: formData.otherNames.trim(),
+          familyName: formData.familyName.trim(),
+          email: formData.email.trim(),
+          dateOfBirth: dateOfBirth,
+          birthDay: formData.birthDay,
+          birthMonth: formData.birthMonth,
+          birthYear: formData.birthYear,
+          gender: formData.gender,
+          telephone: formattedTelephone || undefined,
+          mobile: formattedMobile,
+          specialNeeds: formData.specialNeeds.trim() || undefined,
+          specialNeedsDetails: formData.specialNeedsDetails.trim() || undefined,
+          guardianFirstName: formData.guardianFirstName.trim() || undefined,
+          guardianLastName: formData.guardianLastName.trim() || undefined,
+          guardianTelephone: formattedGuardianTelephone || undefined,
+          guardianMobile: formattedGuardianMobile || undefined,
           ukVisa: formData.ukVisa.trim() || undefined,
-          exams: formData.exams.map(exam => ({
-            subjectId: exam.subjectId,
-            subjectName: exam.subjectName
-          })),
+          exams: examsArray,
           candidateIdNumber: formData.candidateIdNumber.trim() || undefined,
           examDate: formData.examDate || null
         })
@@ -334,12 +565,26 @@ const ExamPage = () => {
     setStudentIdInput('');
     setValidatedStudent(null);
     setFormData({
-      firstName: '',
-      lastName: '',
+      exam: '',
+      examDate: '',
+      title: '',
+      otherNames: '',
+      familyName: '',
+      email: '',
+      birthDay: '',
+      birthMonth: '',
+      birthYear: '',
+      gender: '',
+      telephone: '',
+      mobile: '',
+      specialNeeds: '',
+      specialNeedsDetails: '',
+      guardianFirstName: '',
+      guardianLastName: '',
+      guardianTelephone: '',
+      guardianMobile: '',
       ukVisa: '',
-      exams: [],
-      candidateIdNumber: '',
-      examDate: ''
+      candidateIdNumber: ''
     });
     setShowForm(false);
     setEditingExam(null);
@@ -359,32 +604,85 @@ const ExamPage = () => {
       examDateFormatted = date.toISOString().split('T')[0];
     }
     
-    // Handle both old format (exam) and new format (exams)
-    let examsData = [];
+    // Get exam subject ID (use first exam if multiple)
+    let examSubjectId = '';
     if (exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0) {
-      examsData = exam.exams.map(ex => ({
-        subjectId: typeof ex.subjectId === 'object' ? ex.subjectId._id : ex.subjectId,
-        subjectName: typeof ex.subjectId === 'object' ? ex.subjectId.name : ex.subjectName || ''
-      }));
+      const firstExam = exam.exams[0];
+      examSubjectId = typeof firstExam.subjectId === 'object' ? firstExam.subjectId._id : firstExam.subjectId;
     } else if (exam.exam) {
-      // Legacy format - convert to new format
-      // Try to find subject by name
       const subject = availableSubjects.find(sub => sub.name === exam.exam);
       if (subject) {
-        examsData = [{
-          subjectId: subject.id,
-          subjectName: subject.name
-        }];
+        examSubjectId = subject.id;
       }
+    }
+
+    // Extract date of birth components
+    let birthDay = '', birthMonth = '', birthYear = '';
+    if (exam.dateOfBirth) {
+      const dob = new Date(exam.dateOfBirth);
+      birthDay = dob.getDate().toString();
+      birthMonth = (dob.getMonth() + 1).toString();
+      birthYear = dob.getFullYear().toString();
+    } else if (exam.birthDay && exam.birthMonth && exam.birthYear) {
+      birthDay = exam.birthDay.toString();
+      birthMonth = exam.birthMonth.toString();
+      birthYear = exam.birthYear.toString();
+    }
+
+    // Format mobile numbers for display
+    let mobileDisplay = '';
+    if (exam.mobile) {
+      let mobile = exam.mobile;
+      if (mobile.startsWith('+94')) mobile = mobile.substring(3);
+      else if (mobile.startsWith('0')) mobile = mobile.substring(1);
+      mobileDisplay = mobile.replace(/\D/g, '');
+    }
+
+    let telephoneDisplay = '';
+    if (exam.telephone) {
+      let tel = exam.telephone;
+      if (tel.startsWith('+94')) tel = tel.substring(3);
+      else if (tel.startsWith('0')) tel = tel.substring(1);
+      telephoneDisplay = tel.replace(/\D/g, '');
+    }
+
+    let guardianTelephoneDisplay = '';
+    if (exam.guardianTelephone) {
+      let tel = exam.guardianTelephone;
+      if (tel.startsWith('+94')) tel = tel.substring(3);
+      else if (tel.startsWith('0')) tel = tel.substring(1);
+      guardianTelephoneDisplay = tel.replace(/\D/g, '');
+    }
+
+    let guardianMobileDisplay = '';
+    if (exam.guardianMobile) {
+      let mobile = exam.guardianMobile;
+      if (mobile.startsWith('+94')) mobile = mobile.substring(3);
+      else if (mobile.startsWith('0')) mobile = mobile.substring(1);
+      guardianMobileDisplay = mobile.replace(/\D/g, '');
     }
     
     setFormData({
-      firstName: exam.firstName || '',
-      lastName: exam.lastName || '',
+      exam: examSubjectId,
+      examDate: examDateFormatted,
+      title: exam.title || '',
+      otherNames: exam.otherNames || exam.firstName || '',
+      familyName: exam.familyName || exam.lastName || '',
+      email: exam.email || '',
+      birthDay: birthDay,
+      birthMonth: birthMonth,
+      birthYear: birthYear,
+      gender: exam.gender || '',
+      telephone: telephoneDisplay,
+      mobile: mobileDisplay,
+      specialNeeds: exam.specialNeeds || '',
+      specialNeedsDetails: exam.specialNeedsDetails || '',
+      guardianFirstName: exam.guardianFirstName || '',
+      guardianLastName: exam.guardianLastName || '',
+      guardianTelephone: guardianTelephoneDisplay,
+      guardianMobile: guardianMobileDisplay,
       ukVisa: exam.ukVisa || '',
-      exams: examsData,
-      candidateIdNumber: exam.candidateIdNumber || '',
-      examDate: examDateFormatted
+      candidateIdNumber: exam.candidateIdNumber || ''
     });
     setShowForm(true);
     setError('');
@@ -430,6 +728,7 @@ const ExamPage = () => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
+
 
   const filteredExams = examRecords.filter((exam) => {
     const term = searchTerm.toLowerCase();
@@ -556,159 +855,295 @@ const ExamPage = () => {
 
                 {validatedStudent && (
                   <>
-                    <div className="student-details-section">
-                      <h3>Student Information</h3>
-                      <div className="student-details-grid">
-                        <div className="detail-item">
-                          <label>Name:</label>
-                          <span>{validatedStudent.name}</span>
-                        </div>
-                        <div className="detail-item">
-                          <label>Student ID:</label>
-                          <span>{validatedStudent.studentId}</span>
-                        </div>
-                        <div className="detail-item">
-                          <label>Email:</label>
-                          <span>{validatedStudent.email}</span>
-                        </div>
-                        <div className="detail-item">
-                          <label>Birthday:</label>
-                          <span>{formatDate(validatedStudent.birthday)}</span>
-                        </div>
-                        <div className="detail-item">
-                          <label>Gender:</label>
-                          <span>{validatedStudent.gender}</span>
-                        </div>
-                        <div className="detail-item">
-                          <label>Mobile:</label>
-                          <span>{validatedStudent.mobile}</span>
-                        </div>
-                        {validatedStudent.hasSpecialNeeds && (
-                          <>
-                            <div className="detail-item">
-                              <label>Special Need:</label>
-                              <span>{validatedStudent.specialNeed || '-'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <label>Special Needs Details:</label>
-                              <span>{validatedStudent.specialNeedsDetails || '-'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <label>Guardian First Name:</label>
-                              <span>{validatedStudent.guardianFirstName || '-'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <label>Guardian Last Name:</label>
-                              <span>{validatedStudent.guardianLastName || '-'}</span>
-                            </div>
-                            <div className="detail-item">
-                              <label>Guardian Telephone:</label>
-                              <span>{validatedStudent.guardianTelephone || '-'}</span>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="firstName">First Name <span className="required">*</span></label>
-                        <input
-                          type="text"
-                          id="firstName"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleInputChange}
-                          placeholder="Enter first name"
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="lastName">Last Name <span className="required">*</span></label>
-                        <input
-                          type="text"
-                          id="lastName"
-                          name="lastName"
-                          value={formData.lastName}
-                          onChange={handleInputChange}
-                          placeholder="Enter last name"
-                          required
-                        />
-                      </div>
-                    </div>
-
                     <div className="form-group">
-                      <label htmlFor="examSelect">Select Exam Subjects <span className="required">*</span></label>
+                      <label htmlFor="exam">Exam <span className="required">*</span></label>
                       <select
-                        id="examSelect"
+                        id="exam"
+                        name="exam"
+                        value={formData.exam}
                         onChange={handleExamSelect}
-                        value=""
                         disabled={loadingSubjects}
+                        required
                       >
-                        <option value="" disabled>Select a subject</option>
-                        {availableSubjects
-                          .filter(sub => !formData.exams.some(exam => exam.subjectId === sub.id))
-                          .map(subject => (
-                            <option key={subject.id} value={subject.id}>
-                              {subject.name}
-                            </option>
-                          ))}
+                        <option value="" disabled>Select an exam</option>
+                        {availableSubjects.map(subject => (
+                          <option key={subject.id} value={subject.id}>
+                            {subject.name}
+                          </option>
+                        ))}
                       </select>
-                      {formData.exams.length > 0 && (
-                        <div className="selected-exams-list">
-                          {formData.exams.map((exam, index) => (
-                            <div key={index} className="selected-exam-item">
-                              <span>{exam.subjectName}</span>
-                              <button
-                                type="button"
-                                className="remove-exam-btn"
-                                onClick={() => handleRemoveExam(exam.subjectId)}
-                                title="Remove this exam"
-                              >
-                                ×
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="examDate">Exam Date</label>
+                      <label htmlFor="examDate">Exam Date <span className="required">*</span></label>
                       <input
                         type="date"
                         id="examDate"
                         name="examDate"
                         value={formData.examDate}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
 
-                    {/* <div className="form-group">
-                      <label htmlFor="ukVisa">UK Visa</label>
+                    <div className="form-group">
+                      <label htmlFor="title">Title <span className="required">*</span></label>
+                      <select
+                        id="title"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="" disabled>Select title</option>
+                        <option value="Mr">Mr</option>
+                        <option value="Mrs">Mrs</option>
+                        <option value="Miss">Miss</option>
+                        
+                      </select>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="otherNames">Other Names <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          id="otherNames"
+                          name="otherNames"
+                          value={formData.otherNames}
+                          onChange={handleInputChange}
+                          placeholder="Enter other names"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="familyName">Family Name <span className="required">*</span></label>
+                        <input
+                          type="text"
+                          id="familyName"
+                          name="familyName"
+                          value={formData.familyName}
+                          onChange={handleInputChange}
+                          placeholder="Enter family name"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="email">Email <span className="required">*</span></label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        placeholder="Enter email address"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="birthDay">Day <span className="required">*</span></label>
+                        <input
+                          type="number"
+                          id="birthDay"
+                          name="birthDay"
+                          value={formData.birthDay}
+                          onChange={handleInputChange}
+                          placeholder="DD"
+                          min="1"
+                          max="31"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="birthMonth">Month <span className="required">*</span></label>
+                        <input
+                          type="number"
+                          id="birthMonth"
+                          name="birthMonth"
+                          value={formData.birthMonth}
+                          onChange={handleInputChange}
+                          placeholder="MM"
+                          min="1"
+                          max="12"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="birthYear">Year <span className="required">*</span></label>
+                        <input
+                          type="number"
+                          id="birthYear"
+                          name="birthYear"
+                          value={formData.birthYear}
+                          onChange={handleInputChange}
+                          placeholder="YYYY"
+                          min="1900"
+                          max={new Date().getFullYear()}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="gender">Gender <span className="required">*</span></label>
+                      <select
+                        id="gender"
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="" disabled>Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="telephone">Telephone <span className="required">*</span></label>
+                        <div className="mobile-input-wrapper">
+                          <span className="mobile-prefix">+94</span>
+                          <input
+                            type="tel"
+                            id="telephone"
+                            name="telephone"
+                            value={formData.telephone}
+                            onChange={handleTelephoneChange}
+                            placeholder="771234567"
+                            required
+                            maxLength="9"
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="mobile">Mobile <span className="required">*</span></label>
+                        <div className="mobile-input-wrapper">
+                          <span className="mobile-prefix">+94</span>
+                          <input
+                            type="tel"
+                            id="mobile"
+                            name="mobile"
+                            value={formData.mobile}
+                            onChange={handleMobileChange}
+                            placeholder="771234567"
+                            required
+                            maxLength="9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label htmlFor="specialNeeds">Special Needs</label>
                       <input
                         type="text"
-                        id="ukVisa"
-                        name="ukVisa"
-                        value={formData.ukVisa}
+                        id="specialNeeds"
+                        name="specialNeeds"
+                        value={formData.specialNeeds}
                         onChange={handleInputChange}
-                        placeholder="Enter UK Visa (Optional)"
+                        placeholder="Enter special needs"
                       />
-                    </div> */}
+                    </div>
 
-                    
-
-                    {/* <div className="form-group">
-                      <label htmlFor="candidateIdNumber">Candidate ID Number</label>
-                      <input
-                        type="text"
-                        id="candidateIdNumber"
-                        name="candidateIdNumber"
-                        value={formData.candidateIdNumber}
+                    <div className="form-group">
+                      <label htmlFor="specialNeedsDetails">Special Needs Details</label>
+                      <textarea
+                        id="specialNeedsDetails"
+                        name="specialNeedsDetails"
+                        value={formData.specialNeedsDetails}
                         onChange={handleInputChange}
-                        placeholder="Enter Candidate ID Number (Optional)"
+                        placeholder="Enter special needs details"
+                        rows="4"
                       />
-                    </div> */}
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="guardianFirstName">Guardian FirstName</label>
+                        <input
+                          type="text"
+                          id="guardianFirstName"
+                          name="guardianFirstName"
+                          value={formData.guardianFirstName}
+                          onChange={handleInputChange}
+                          placeholder="Enter guardian first name"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="guardianLastName">Guardian LastName</label>
+                        <input
+                          type="text"
+                          id="guardianLastName"
+                          name="guardianLastName"
+                          value={formData.guardianLastName}
+                          onChange={handleInputChange}
+                          placeholder="Enter guardian last name"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="guardianTelephone">Guardian Telephone</label>
+                        <div className="mobile-input-wrapper">
+                          <span className="mobile-prefix">+94</span>
+                          <input
+                            type="tel"
+                            id="guardianTelephone"
+                            name="guardianTelephone"
+                            value={formData.guardianTelephone}
+                            onChange={handleGuardianTelephoneChange}
+                            placeholder="771234567"
+                            maxLength="9"
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="guardianMobile">Guardian Mobile</label>
+                        <div className="mobile-input-wrapper">
+                          <span className="mobile-prefix">+94</span>
+                          <input
+                            type="tel"
+                            id="guardianMobile"
+                            name="guardianMobile"
+                            value={formData.guardianMobile}
+                            onChange={handleGuardianMobileChange}
+                            placeholder="771234567"
+                            maxLength="9"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label htmlFor="ukVisa">For Uk Visa</label>
+                        <input
+                          type="text"
+                          id="ukVisa"
+                          name="ukVisa"
+                          value={formData.ukVisa}
+                          onChange={handleInputChange}
+                          placeholder="Enter UK Visa (Optional)"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label htmlFor="candidateIdNumber">Candidate ID Number</label>
+                        <input
+                          type="text"
+                          id="candidateIdNumber"
+                          name="candidateIdNumber"
+                          value={formData.candidateIdNumber}
+                          onChange={handleInputChange}
+                          placeholder="Enter Candidate ID Number (Optional)"
+                        />
+                      </div>
+                    </div>
 
                     <div className="form-actions">
                       <button 
@@ -747,68 +1182,101 @@ const ExamPage = () => {
                   <thead>
                     <tr>
                       <th>Student ID</th>
-                      <th>Student Name</th>
-                      <th>First Name</th>
-                      <th>Last Name</th>
-                      <th>Email</th>
-                      <th>UK Visa</th>
-                      <th>Exams</th>
+                      <th>Exam</th>
                       <th>Exam Date</th>
+                      <th>Title</th>
+                      <th>Other Names</th>
+                      <th>Family Name</th>
+                      <th>Email</th>
+                      <th>Day</th>
+                      <th>Month</th>
+                      <th>Year</th>
+                      <th>Gender</th>
+                      <th>Telephone</th>
+                      <th>Mobile</th>
+                      <th>Special Needs</th>
+                      <th>Special Needs Details</th>
+                      <th>Guardian FirstName</th>
+                      <th>Guardian LastName</th>
+                      <th>Guardian Telephone</th>
+                      <th>Guardian Mobile</th>
+                      <th>For Uk Visa</th>
                       <th>Candidate ID Number</th>
-                      <th>Created At</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredExams.map((exam) => (
-                      <tr key={exam._id}>
-                        <td>{exam.studentIdNumber || (exam.studentId?.studentId || '-')}</td>
-                        <td>{exam.studentId?.name || '-'}</td>
-                        <td>{exam.firstName || '-'}</td>
-                        <td>{exam.lastName || '-'}</td>
-                        <td>{exam.studentId?.email || '-'}</td>
-                        <td>{exam.ukVisa || '-'}</td>
-                        <td>
-                          {exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0 ? (
-                            <div className="exams-list">
-                              {exam.exams.map((ex, idx) => {
-                                const subjectName = typeof ex.subjectId === 'object' ? ex.subjectId.name : ex.subjectName || '';
-                                return (
-                                  <span key={idx} className="exam-badge">
-                                    {subjectName}
-                                  </span>
-                                );
-                              })}
+                    {filteredExams.map((exam) => {
+                      // derive day/month/year if provided as separate fields or from dateOfBirth
+                      let day = exam.birthDay || '';
+                      let month = exam.birthMonth || '';
+                      let year = exam.birthYear || '';
+                      if ((!day || !month || !year) && exam.dateOfBirth) {
+                        const dob = new Date(exam.dateOfBirth);
+                        day = day || dob.getDate().toString();
+                        month = month || (dob.getMonth() + 1).toString();
+                        year = year || dob.getFullYear().toString();
+                      }
+                      
+                      return (
+                        <tr key={exam._id}>
+                          <td className="student-id-cell">{exam.studentIdNumber || exam.studentId?.studentId || '-'}</td>
+                          <td className="exam-subject-cell">
+                            <div className="subject-badges">
+                              {exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0
+                                ? exam.exams.map((ex, idx) => {
+                                    const subjectName =
+                                      (ex.subjectId && typeof ex.subjectId === 'object' && ex.subjectId.name) ||
+                                      ex.subjectName ||
+                                      '-';
+                                    return (
+                                      <span key={idx} className="exam-badge">{subjectName}</span>
+                                    );
+                                  })
+                                : <span className="exam-badge">{exam.exam || '-'}</span>
+                              }
                             </div>
-                          ) : exam.exam ? (
-                            <span className="exam-badge">{exam.exam}</span>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td>{exam.examDate ? formatDate(exam.examDate) : '-'}</td>
-                        <td>{exam.candidateIdNumber || '-'}</td>
-                        <td>{formatDate(exam.createdAt)}</td>
-                        <td>
-                          <div className="exam-actions">
-                            <button
-                              className="edit-btn"
-                              onClick={() => handleEdit(exam)}
-                              title="Edit Exam"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              className="delete-btn"
-                              onClick={() => handleDelete(exam._id)}
-                              title="Delete Exam"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td>{exam.examDate ? formatDate(exam.examDate) : '-'}</td>
+                          <td>{exam.title || '-'}</td>
+                          <td className="student-name-cell">{exam.otherNames || exam.firstName || '-'}</td>
+                          <td className="student-name-cell">{exam.familyName || exam.lastName || '-'}</td>
+                          <td>{exam.email || exam.studentId?.email || '-'}</td>
+                          <td>{day || '-'}</td>
+                          <td>{month || '-'}</td>
+                          <td>{year || '-'}</td>
+                          <td>{exam.gender || exam.studentId?.gender || '-'}</td>
+                          <td>{exam.telephone || '-'}</td>
+                          <td>{exam.mobile || exam.studentId?.mobile || '-'}</td>
+                          <td>{exam.specialNeeds || exam.studentId?.specialNeed || '-'}</td>
+                          <td className="details-cell">{exam.specialNeedsDetails || exam.studentId?.specialNeedsDetails || '-'}</td>
+                          <td>{exam.guardianFirstName || exam.studentId?.guardianFirstName || '-'}</td>
+                          <td>{exam.guardianLastName || exam.studentId?.guardianLastName || '-'}</td>
+                          <td>{exam.guardianTelephone || exam.studentId?.guardianTelephone || '-'}</td>
+                          <td>{exam.guardianMobile || '-'}</td>
+                          <td>{exam.ukVisa || '-'}</td>
+                          <td>{exam.candidateIdNumber || '-'}</td>
+                          <td>
+                            <div className="exam-actions">
+                              <button
+                                className="edit-btn"
+                                onClick={() => handleEdit(exam)}
+                                title="Edit Exam"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="delete-btn"
+                                onClick={() => handleDelete(exam._id)}
+                                title="Delete Exam"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -12,20 +12,17 @@ const StudentsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     studentId: '',
     email: '',
     birthday: '',
     gender: '',
     mobile: '',
     selectedSubjects: [],
-    subjectPrices: {}, // Object mapping subjectId to price
-    hasSpecialNeeds: false,
-    specialNeed: '',
-    specialNeedsDetails: '',
-    guardianFirstName: '',
-    guardianLastName: '',
-    guardianTelephone: ''
+    subjectPrices: {}, // Store prices as { subjectId: price }
+    guardianTelephone: '',
+    guardianName: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -133,12 +130,15 @@ const StudentsPage = () => {
         ? prev.selectedSubjects.filter(id => id !== subjectId)
         : [...prev.selectedSubjects, subjectId];
       
-      // Remove price when unselecting, add empty price when selecting
+      // Update subjectPrices: remove price when unselected, add default price when selected
       const newSubjectPrices = { ...prev.subjectPrices };
       if (isSelected) {
+        // Remove price when unselecting
         delete newSubjectPrices[subjectId];
       } else {
-        newSubjectPrices[subjectId] = '';
+        // When selecting, initialize with subject's default price if available, otherwise empty string
+        const subject = subjects.find(s => s._id === subjectId);
+        newSubjectPrices[subjectId] = subject?.price || '';
       }
       
       return {
@@ -150,15 +150,35 @@ const StudentsPage = () => {
   };
 
   const handleSubjectPriceChange = (subjectId, price) => {
-    // Store price as string to preserve exact user input (no rounding)
+    // Store as string to preserve exact value entered by user
+    // Only validate that it's a valid number format, but keep as string
+    const trimmedPrice = price.trim();
+    if (trimmedPrice === '') {
+      setFormData(prev => ({
+        ...prev,
+        subjectPrices: {
+          ...prev.subjectPrices,
+          [subjectId]: ''
+        }
+      }));
+      return;
+    }
+    
+    // Allow only numbers and one decimal point
+    const validPrice = trimmedPrice.replace(/[^\d.]/g, '');
+    // Ensure only one decimal point
+    const parts = validPrice.split('.');
+    const formattedPrice = parts.length > 2 
+      ? parts[0] + '.' + parts.slice(1).join('')
+      : validPrice;
+    
     setFormData(prev => ({
       ...prev,
       subjectPrices: {
         ...prev.subjectPrices,
-        [subjectId]: price
+        [subjectId]: formattedPrice
       }
     }));
-    setError('');
   };
 
   const handleEdit = (student) => {
@@ -172,30 +192,31 @@ const StudentsPage = () => {
       return typeof subject === 'object' ? subject._id : subject;
     }) || [];
     
-    // Build subjectPrices object from existing student data
-    // If student has subjectPrices array, use it; otherwise create from subjects and totalPrice
+    // Extract subject prices into an object
     const subjectPricesObj = {};
     if (student.subjectPrices && Array.isArray(student.subjectPrices)) {
       student.subjectPrices.forEach(sp => {
-        const subjectId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
-        // Preserve exact price value as string to avoid rounding issues
-        subjectPricesObj[subjectId] = sp.price !== undefined && sp.price !== null ? String(sp.price) : '';
-      });
-    } else if (subjectIds.length > 0 && student.totalPrice) {
-      // Fallback: distribute totalPrice evenly if no subjectPrices exist
-      // Don't use toFixed here - let user enter their own prices
-      subjectIds.forEach(id => {
-        subjectPricesObj[id] = '';
-      });
-    } else {
-      // Initialize empty prices for selected subjects
-      subjectIds.forEach(id => {
-        subjectPricesObj[id] = '';
+        const subjId = typeof sp.subjectId === 'object' ? (sp.subjectId?._id || sp.subjectId) : sp.subjectId;
+        if (subjId) {
+          subjectPricesObj[subjId] = sp.price || 0;
+        }
       });
     }
+    // If no subjectPrices exist, initialize with default prices from subjects
+    subjectIds.forEach(subjectId => {
+      if (!subjectPricesObj[subjectId]) {
+        const subject = subjects.find(s => s._id === subjectId);
+        subjectPricesObj[subjectId] = subject?.price || 0;
+      }
+    });
     
+    const nameParts = (student.name || '').trim().split(/\s+/);
+    const firstName = nameParts.shift() || '';
+    const lastName = nameParts.join(' ');
+
     setFormData({
-      name: student.name || '',
+      firstName,
+      lastName,
       studentId: student.studentId || '',
       email: student.email || '',
       birthday: birthdayDate,
@@ -204,26 +225,18 @@ const StudentsPage = () => {
         // Format mobile number for display (remove +94 prefix if present, remove leading 0)
         let mobile = student.mobile || '';
         if (mobile) {
-          // Remove +94 prefix if present
           if (mobile.startsWith('+94')) {
             mobile = mobile.substring(3);
           }
-          // Remove leading 0 if present
           if (mobile.startsWith('0')) {
             mobile = mobile.substring(1);
           }
-          // Remove any non-digit characters
           mobile = mobile.replace(/\D/g, '');
         }
         return mobile;
       })(),
       selectedSubjects: subjectIds,
       subjectPrices: subjectPricesObj,
-      hasSpecialNeeds: student.hasSpecialNeeds || false,
-      specialNeed: student.specialNeed || '',
-      specialNeedsDetails: student.specialNeedsDetails || '',
-      guardianFirstName: student.guardianFirstName || '',
-      guardianLastName: student.guardianLastName || '',
       guardianTelephone: (() => {
         // Format guardian telephone for display (remove +94 prefix if present, remove leading 0)
         let guardianTel = student.guardianTelephone || '';
@@ -240,6 +253,12 @@ const StudentsPage = () => {
           guardianTel = guardianTel.replace(/\D/g, '');
         }
         return guardianTel;
+      })(),
+      guardianName: (() => {
+        const guardianFirst = student.guardianFirstName || '';
+        const guardianLast = student.guardianLastName || '';
+        const combined = `${guardianFirst} ${guardianLast}`.trim();
+        return combined || '';
       })()
     });
     
@@ -249,7 +268,8 @@ const StudentsPage = () => {
   const handleCancelEdit = () => {
     setEditingStudent(null);
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       studentId: '',
       email: '',
       birthday: '',
@@ -257,12 +277,8 @@ const StudentsPage = () => {
       mobile: '',
       selectedSubjects: [],
       subjectPrices: {},
-      hasSpecialNeeds: false,
-      specialNeed: '',
-      specialNeedsDetails: '',
-      guardianFirstName: '',
-      guardianLastName: '',
-      guardianTelephone: ''
+      guardianTelephone: '',
+      guardianName: ''
     });
     setShowForm(false);
     setError('');
@@ -274,9 +290,11 @@ const StudentsPage = () => {
     setLoading(true);
 
     // Trim and validate required fields
-    const trimmedName = (formData.name || '').trim();
+    const trimmedFirstName = (formData.firstName || '').trim();
+    const trimmedLastName = (formData.lastName || '').trim();
     const trimmedStudentId = (formData.studentId || '').trim();
     const trimmedEmail = (formData.email || '').trim();
+    const trimmedGuardianName = (formData.guardianName || '').trim();
     
     // Format mobile number: remove leading 0, ensure it starts with +94
     let trimmedMobile = (formData.mobile || '').trim();
@@ -304,13 +322,22 @@ const StudentsPage = () => {
       trimmedGuardianTelephone = '+94' + trimmedGuardianTelephone;
     }
 
+    // Split guardian name into first and last name
+    const guardianNameParts = trimmedGuardianName.trim().split(/\s+/);
+    const guardianFirstName = guardianNameParts.shift() || '';
+    const guardianLastName = guardianNameParts.join(' ') || '';
+
     // Validate required fields with specific error messages
-    if (!trimmedName) {
-      setError('Please enter student name');
+    if (!trimmedFirstName) {
+      setError('Please enter first name');
       setLoading(false);
       return;
     }
-    // Student ID is now auto-generated, so no validation needed
+    if (!trimmedLastName) {
+      setError('Please enter last name');
+      setLoading(false);
+      return;
+    }
     if (!trimmedEmail) {
       setError('Please enter email address');
       setLoading(false);
@@ -336,15 +363,34 @@ const StudentsPage = () => {
       setLoading(false);
       return;
     }
-    // Validate that all selected subjects have prices
-    for (const subjectId of formData.selectedSubjects) {
+
+    // Validate that all selected subjects have prices entered
+    const missingPrices = formData.selectedSubjects.filter(subjectId => {
       const price = formData.subjectPrices[subjectId];
-      if (!price || Number(price) <= 0) {
+      // Check if price is missing, empty, or invalid (0 or less)
+      if (price === undefined || price === '' || price === null) return true;
+      const numPrice = parseFloat(price);
+      return isNaN(numPrice) || numPrice <= 0;
+    });
+
+    if (missingPrices.length > 0) {
+      const missingSubjectNames = missingPrices.map(subjectId => {
         const subject = subjects.find(s => s._id === subjectId);
-        setError(`Please enter a valid price for ${subject?.name || 'selected subject'}`);
-        setLoading(false);
-        return;
-      }
+        return subject?.name || 'Unknown';
+      }).join(', ');
+      setError(`Please enter a valid price (greater than 0) for the following subjects: ${missingSubjectNames}`);
+      setLoading(false);
+      return;
+    }
+    if (!trimmedGuardianTelephone) {
+      setError('Please enter guardian telephone number');
+      setLoading(false);
+      return;
+    }
+    if (!trimmedGuardianName) {
+      setError('Please enter guardian/parent name');
+      setLoading(false);
+      return;
     }
 
     try {
@@ -354,21 +400,6 @@ const StudentsPage = () => {
       
       const method = editingStudent ? 'PUT' : 'POST';
 
-      // Build subjectPrices array from formData
-      // Convert to numbers only when sending to backend, preserving exact values
-      const subjectPrices = formData.selectedSubjects.map(subjectId => {
-        const priceStr = formData.subjectPrices[subjectId] || '0';
-        // Parse as float to preserve decimal precision
-        const price = parseFloat(priceStr) || 0;
-        return {
-          subjectId: subjectId,
-          price: price
-        };
-      });
-      
-      // Calculate total price from subject prices
-      const totalPrice = subjectPrices.reduce((sum, sp) => sum + sp.price, 0);
-
       const response = await fetch(url, {
         method: method,
         headers: {
@@ -376,21 +407,42 @@ const StudentsPage = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: trimmedName,
+          name: `${trimmedFirstName} ${trimmedLastName}`.trim(),
           studentId: editingStudent ? trimmedStudentId : '', // Empty string for new students to trigger auto-generation
           email: trimmedEmail,
           birthday: formData.birthday,
           gender: formData.gender,
           mobile: trimmedMobile,
           subjects: formData.selectedSubjects,
-          subjectPrices: subjectPrices,
-          totalPrice: totalPrice,
-          hasSpecialNeeds: formData.hasSpecialNeeds,
-          specialNeed: formData.hasSpecialNeeds ? (formData.specialNeed || '').trim() : undefined,
-          specialNeedsDetails: formData.hasSpecialNeeds ? (formData.specialNeedsDetails || '').trim() : undefined,
-          guardianFirstName: formData.hasSpecialNeeds ? (formData.guardianFirstName || '').trim() : undefined,
-          guardianLastName: formData.hasSpecialNeeds ? (formData.guardianLastName || '').trim() : undefined,
-          guardianTelephone: formData.hasSpecialNeeds ? trimmedGuardianTelephone : undefined
+          subjectPrices: formData.selectedSubjects.map(subjectId => {
+            const price = formData.subjectPrices[subjectId];
+            // Convert string to number only when submitting, preserving exact value
+            if (price === undefined || price === '' || price === null) {
+              return { subjectId: subjectId, price: 0 };
+            }
+            const numPrice = parseFloat(price);
+            // Round to 2 decimal places to avoid floating point issues
+            const roundedPrice = isNaN(numPrice) ? 0 : Math.round(numPrice * 100) / 100;
+            return {
+              subjectId: subjectId,
+              price: roundedPrice
+            };
+          }),
+          totalPrice: formData.selectedSubjects.reduce((sum, subjectId) => {
+            const price = formData.subjectPrices[subjectId];
+            if (price === undefined || price === '' || price === null) return sum;
+            const numPrice = parseFloat(price);
+            if (isNaN(numPrice)) return sum;
+            // Round to 2 decimal places to avoid floating point issues
+            const roundedPrice = Math.round(numPrice * 100) / 100;
+            return Math.round((sum + roundedPrice) * 100) / 100;
+          }, 0),
+          // Mark as having guardian info so backend keeps these fields
+          hasSpecialNeeds: Boolean(trimmedGuardianName || trimmedGuardianTelephone),
+          guardianName: trimmedGuardianName,
+          guardianFirstName: guardianFirstName,
+          guardianLastName: guardianLastName,
+          guardianTelephone: trimmedGuardianTelephone
         })
       });
 
@@ -399,7 +451,8 @@ const StudentsPage = () => {
       if (response.ok && data.success) {
         await fetchStudents();
         setFormData({
-          name: '',
+          firstName: '',
+          lastName: '',
           studentId: '',
           email: '',
           birthday: '',
@@ -407,11 +460,8 @@ const StudentsPage = () => {
           mobile: '',
           selectedSubjects: [],
           subjectPrices: {},
-          hasSpecialNeeds: false,
-          specialNeedsDetails: '',
-          guardianFirstName: '',
-          guardianLastName: '',
-          guardianTelephone: ''
+          guardianTelephone: '',
+          guardianName: ''
         });
         setEditingStudent(null);
         setShowForm(false);
@@ -471,25 +521,17 @@ const StudentsPage = () => {
   };
 
   const getSubjectsWithPrices = (student) => {
-    if (!student.subjects || student.subjects.length === 0) return 'None';
-    
-    // If student has subjectPrices, use them
-    if (student.subjectPrices && Array.isArray(student.subjectPrices) && student.subjectPrices.length > 0) {
-      return student.subjectPrices.map(sp => {
-        const subjectId = typeof sp.subjectId === 'object' ? sp.subjectId._id : sp.subjectId;
-        const subject = student.subjects.find(s => {
-          const sId = typeof s === 'object' ? s._id : s;
-          return sId === subjectId;
-        });
-        const subjectName = typeof subject === 'object' && subject.name 
-          ? subject.name 
-          : subjects.find(s => s._id === subjectId)?.name || 'Unknown';
-        return `${subjectName} (LKR ${(sp.price || 0).toFixed(2)})`;
-      }).join(', ');
-    }
-    
-    // Fallback to just subject names
     return getSubjectNames(student.subjects);
+  };
+
+  const getGuardianName = (student) => {
+    if (student.guardianName) {
+      return student.guardianName || '-';
+    }
+    const first = student.guardianFirstName || '';
+    const last = student.guardianLastName || '';
+    const combined = `${first} ${last}`.trim();
+    return combined || '-';
   };
 
   const filteredStudents = useMemo(() => {
@@ -518,36 +560,36 @@ const StudentsPage = () => {
     }
 
     const headers = [
-      'Name',
-      'Student ID',
-      'Email',
-      'Birthday',
+      'First Name',
+      'Last Name',
+      'Student Registration Number',
+      'Email Address',
+      'Date of Birth',
       'Gender',
-      'Mobile',
-      'Subjects',
-      'Total Price (LKR)',
-      'Special Needs',
-      'Guardian First Name',
-      'Guardian Last Name',
-      'Guardian Telephone'
+      'Primary Contact Number',
+      'Enrolled Subjects',
+      'Guardian Telephone Number',
+      'Guardian/Parent Name'
     ];
 
-    const rows = filteredStudents.map((student) => [
-      student.name || '',
-      student.studentId || '',
-      student.email || '',
-      student.birthday ? new Date(student.birthday).toISOString().slice(0, 10) : '',
-      student.gender || '',
-      student.mobile || '',
-      getSubjectNames(student.subjects),
-      student.totalPrice !== undefined && student.totalPrice !== null
-        ? student.totalPrice
-        : 0,
-      student.hasSpecialNeeds ? 'Yes' : 'No',
-      student.guardianFirstName || '',
-      student.guardianLastName || '',
-      student.guardianTelephone || ''
-    ]);
+    const rows = filteredStudents.map((student) => {
+      const nameParts = (student.name || '').trim().split(/\s+/);
+      const firstName = nameParts.shift() || '';
+      const lastName = nameParts.join(' ');
+
+      return [
+        firstName,
+        lastName,
+        student.studentId || '',
+        student.email || '',
+        student.birthday ? new Date(student.birthday).toISOString().slice(0, 10) : '',
+        student.gender || '',
+        student.mobile || '',
+        getSubjectNames(student.subjects),
+        student.guardianTelephone || '',
+        getGuardianName(student)
+      ];
+    });
 
     const csvContent = [headers, ...rows]
       .map((row) =>
@@ -635,59 +677,27 @@ const StudentsPage = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label htmlFor="name">Student Name <span className="required">*</span></label>
+                    <label htmlFor="firstName">First Name <span className="required">*</span></label>
                     <input
                       type="text"
-                      id="name"
-                      name="name"
-                      value={formData.name}
+                      id="firstName"
+                      name="firstName"
+                      value={formData.firstName}
                       onChange={handleInputChange}
-                      placeholder="Enter student name"
+                      placeholder="Enter first name"
                       required
                     />
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="studentId">
-                      Student ID {editingStudent ? <span className="required">*</span> : <span className="auto-generated">(Auto-generated)</span>}
-                    </label>
+                    <label htmlFor="lastName">Last Name <span className="required">*</span></label>
                     <input
                       type="text"
-                      id="studentId"
-                      name="studentId"
-                      value={editingStudent ? formData.studentId : 'Auto-generated (ID####)'}
+                      id="lastName"
+                      name="lastName"
+                      value={formData.lastName}
                       onChange={handleInputChange}
-                      placeholder={editingStudent ? "Enter student ID" : "Will be auto-generated"}
-                      required={editingStudent}
-                      disabled={!editingStudent}
-                      readOnly={!editingStudent}
-                      style={!editingStudent ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="email">Email <span className="required">*</span></label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder="Enter email address"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="birthday">Birthday <span className="required">*</span></label>
-                    <input
-                      type="date"
-                      id="birthday"
-                      name="birthday"
-                      value={formData.birthday}
-                      onChange={handleInputChange}
+                      placeholder="Enter last name"
                       required
                     />
                   </div>
@@ -706,30 +716,108 @@ const StudentsPage = () => {
                       <option value="" disabled>Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
-      
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="mobile">Mobile <span className="required">*</span></label>
-                    <div className="mobile-input-wrapper">
-                      <span className="mobile-prefix">+94</span>
+                    <label htmlFor="birthday">Date of Birth <span className="required">*</span></label>
                     <input
-                      type="tel"
-                      id="mobile"
-                      name="mobile"
-                      value={formData.mobile}
-                        onChange={handleMobileChange}
-                        placeholder="771234567"
+                      type="date"
+                      id="birthday"
+                      name="birthday"
+                      value={formData.birthday}
+                      onChange={handleInputChange}
                       required
-                        maxLength="9"
                     />
-                    </div>
                   </div>
                 </div>
 
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="mobile">Primary Contact Number <span className="required">*</span></label>
+                    <div className="mobile-input-wrapper">
+                      <span className="mobile-prefix">+94</span>
+                      <input
+                        type="tel"
+                        id="mobile"
+                        name="mobile"
+                        value={formData.mobile}
+                        onChange={handleMobileChange}
+                        placeholder="771234567"
+                        required
+                        maxLength="9"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="email">Email Address <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      placeholder="Enter email address"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="studentId">
+                      Student Registration Number <span className="auto-generated">(System generated)</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="studentId"
+                      name="studentId"
+                      value={editingStudent ? formData.studentId : 'Auto-generated'}
+                      onChange={handleInputChange}
+                      placeholder="Will be auto-generated"
+                      disabled={!editingStudent}
+                      readOnly={!editingStudent}
+                      style={!editingStudent ? { backgroundColor: '#f3f4f6', cursor: 'not-allowed' } : {}}
+                    />
+                  </div>
+
+                  
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="guardianName">Guardian/Parent Name <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      id="guardianName"
+                      name="guardianName"
+                      value={formData.guardianName}
+                      onChange={handleInputChange}
+                      placeholder="Enter guardian or parent name"
+                      required
+                    />
+                  </div>
+                </div>
                 <div className="form-group">
-                  <label>Subjects <span className="required">*</span></label>
+                    <label htmlFor="guardianTelephone">Guardian Telephone Number <span className="required">*</span></label>
+                    <div className="mobile-input-wrapper">
+                      <span className="mobile-prefix">+94</span>
+                      <input
+                        type="tel"
+                        id="guardianTelephone"
+                        name="guardianTelephone"
+                        value={formData.guardianTelephone}
+                        onChange={handleGuardianTelephoneChange}
+                        placeholder="771234567"
+                        required
+                        maxLength="9"
+                      />
+                    </div>
+                  </div>
+
+                <div className="form-group">
+                  <label>Enrolled Subjects <span className="required">*</span></label>
                   <div className="subjects-selection">
                     {subjects.length === 0 ? (
                       <p className="no-subjects">No subjects available</p>
@@ -737,6 +825,9 @@ const StudentsPage = () => {
                       <div className="subjects-checkbox-list">
                         {subjects.map((subject) => {
                           const isSelected = formData.selectedSubjects.includes(subject._id);
+                          const priceValue = formData.subjectPrices[subject._id];
+                          // Display empty string if not set, otherwise show the value as string to preserve exact input
+                          const displayPrice = priceValue === undefined || priceValue === '' ? '' : String(priceValue);
                           return (
                             <div key={subject._id} className="subject-item-with-price">
                               <label className="subject-checkbox-item">
@@ -749,15 +840,16 @@ const StudentsPage = () => {
                               </label>
                               {isSelected && (
                                 <div className="subject-price-input">
-                                  <label htmlFor={`price-${subject._id}`}>Price (LKR) <span className="required">*</span></label>
+                                  <label htmlFor={`price-${subject._id}`}>
+                                    Price <span className="required">*</span>
+                                  </label>
                                   <input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     id={`price-${subject._id}`}
-                                    value={formData.subjectPrices[subject._id] || ''}
+                                    value={displayPrice}
                                     onChange={(e) => handleSubjectPriceChange(subject._id, e.target.value)}
                                     placeholder="Enter price"
-                                    min="0"
-                                    step="any"
                                     required
                                   />
                                 </div>
@@ -768,99 +860,7 @@ const StudentsPage = () => {
                       </div>
                     )}
                   </div>
-                  {formData.selectedSubjects.length > 0 && (
-                    <div className="total-price-display">
-                      <strong>Total Price: LKR {
-                        formData.selectedSubjects.reduce((sum, subjectId) => {
-                          const price = Number(formData.subjectPrices[subjectId] || 0);
-                          return sum + price;
-                        }, 0).toFixed(2)
-                      }</strong>
-                    </div>
-                  )}
                 </div>
-
-                <div className="form-group">
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      name="hasSpecialNeeds"
-                      checked={formData.hasSpecialNeeds}
-                      onChange={handleInputChange}
-                    />
-                    <span>Has Special Needs</span>
-                  </label>
-                </div>
-
-                {formData.hasSpecialNeeds && (
-                  <>
-                    <div className="form-group">
-                      <label htmlFor="specialNeed">Special Need</label>
-                      <input
-                        type="text"
-                        id="specialNeed"
-                        name="specialNeed"
-                        value={formData.specialNeed}
-                        onChange={handleInputChange}
-                        placeholder="Enter special need (e.g., Autism, ADHD, etc.)"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="specialNeedsDetails">Special Needs Details</label>
-                      <textarea
-                        id="specialNeedsDetails"
-                        name="specialNeedsDetails"
-                        value={formData.specialNeedsDetails}
-                        onChange={handleInputChange}
-                        placeholder="Enter special needs details"
-                        rows="3"
-                      />
-                    </div>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label htmlFor="guardianFirstName">Guardian First Name </label>
-                        <input
-                          type="text"
-                          id="guardianFirstName"
-                          name="guardianFirstName"
-                          value={formData.guardianFirstName}
-                          onChange={handleInputChange}
-                          placeholder="Enter guardian first name"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label htmlFor="guardianLastName">Guardian Last Name </label>
-                        <input
-                          type="text"
-                          id="guardianLastName"
-                          name="guardianLastName"
-                          value={formData.guardianLastName}
-                          onChange={handleInputChange}
-                          placeholder="Enter guardian last name"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group">
-                      <label htmlFor="guardianTelephone">Guardian Telephone </label>
-                      <div className="mobile-input-wrapper">
-                        <span className="mobile-prefix">+94</span>
-                      <input
-                        type="tel"
-                        id="guardianTelephone"
-                        name="guardianTelephone"
-                        value={formData.guardianTelephone}
-                          onChange={handleGuardianTelephoneChange}
-                          placeholder="771234567"
-                          maxLength={9}
-                      />
-                      </div>
-                    </div>
-                  </>
-                )}
 
                 <div className="form-actions">
                   <button 
@@ -894,52 +894,55 @@ const StudentsPage = () => {
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Student ID</th>
-                    <th>Email</th>
-                    <th>Birthday</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Student Registration No.</th>
+                    <th>Email Address</th>
+                    <th>Date of Birth</th>
                     <th>Gender</th>
-                    <th>Mobile</th>
-                    <th>Subjects</th>
-                    <th>Total Price</th>
-                    <th>Special Needs</th>
-                    <th>Guardian First Name</th>
-                    <th>Guardian Last Name</th>
-                    <th>Guardian Telephone</th>
+                    <th>Primary Contact Number</th>
+                    <th>Enrolled Subjects</th>
+                    <th>Guardian Telephone Number</th>
+                    <th>Guardian/Parent Name</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student) => (
-                    <tr key={student._id}>
-                      <td>{student.name}</td>
-                      <td>{student.studentId}</td>
-                      <td>{student.email}</td>
-                      <td>{formatDate(student.birthday)}</td>
-                      <td>{student.gender}</td>
-                      <td>{student.mobile}</td>
-                    <td>{getSubjectsWithPrices(student)}</td>
-                    <td>LKR {student.totalPrice?.toFixed(2) || '0.00'}</td>
-                      <td>{student.hasSpecialNeeds ? 'Yes' : 'No'}</td>
-                      <td>{student.hasSpecialNeeds && student.guardianFirstName ? student.guardianFirstName : '-'}</td>
-                      <td>{student.hasSpecialNeeds && student.guardianLastName ? student.guardianLastName : '-'}</td>
-                      <td>{student.hasSpecialNeeds && student.guardianTelephone ? student.guardianTelephone : '-'}</td>
-                      <td>
-                        <button 
-                          className="edit-btn"
-                          onClick={() => handleEdit(student)}
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          className="delete-btn"
-                          onClick={() => handleDelete(student._id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredStudents.map((student) => {
+                    const nameParts = (student.name || '').trim().split(/\s+/);
+                    const firstName = nameParts.shift() || '';
+                    const lastName = nameParts.join(' ');
+                    const guardian = getGuardianName(student);
+
+                    return (
+                      <tr key={student._id}>
+                        <td>{firstName}</td>
+                        <td>{lastName}</td>
+                        <td>{student.studentId}</td>
+                        <td>{student.email}</td>
+                        <td>{formatDate(student.birthday)}</td>
+                        <td>{student.gender}</td>
+                        <td>{student.mobile}</td>
+                        <td>{getSubjectsWithPrices(student)}</td>
+                        <td>{student.guardianTelephone || student.guardianTeliphone || '-'}</td>
+                        <td>{guardian}</td>
+                        <td>
+                          <button 
+                            className="edit-btn"
+                            onClick={() => handleEdit(student)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="delete-btn"
+                            onClick={() => handleDelete(student._id)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

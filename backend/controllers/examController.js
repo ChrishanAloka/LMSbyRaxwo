@@ -61,8 +61,25 @@ export const createExam = async (req, res) => {
     const {
       studentId,
       studentIdNumber,
+      title,
       firstName,
       lastName,
+      otherNames,
+      familyName,
+      email,
+      dateOfBirth,
+      birthDay,
+      birthMonth,
+      birthYear,
+      gender,
+      telephone,
+      mobile,
+      specialNeeds,
+      specialNeedsDetails,
+      guardianFirstName,
+      guardianLastName,
+      guardianTelephone,
+      guardianMobile,
       ukVisa,
       exams,
       candidateIdNumber,
@@ -123,9 +140,26 @@ export const createExam = async (req, res) => {
     // Create exam
     const examRecord = await Exam.create({
       studentId,
-      studentIdNumber: studentIdNumber.trim(),
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
+      studentIdNumber: studentIdNumber ? studentIdNumber.trim() : undefined,
+      title: title ? title.trim() : undefined,
+      firstName: firstName ? firstName.trim() : undefined,
+      lastName: lastName ? lastName.trim() : undefined,
+      otherNames: otherNames ? otherNames.trim() : undefined,
+      familyName: familyName ? familyName.trim() : undefined,
+      email: email ? email.trim() : undefined,
+      dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      birthDay: birthDay ? birthDay.trim() : undefined,
+      birthMonth: birthMonth ? birthMonth.trim() : undefined,
+      birthYear: birthYear ? birthYear.trim() : undefined,
+      gender: gender ? gender.trim() : undefined,
+      telephone: telephone ? telephone.trim() : undefined,
+      mobile: mobile ? mobile.trim() : undefined,
+      specialNeeds: specialNeeds ? specialNeeds.trim() : undefined,
+      specialNeedsDetails: specialNeedsDetails ? specialNeedsDetails.trim() : undefined,
+      guardianFirstName: guardianFirstName ? guardianFirstName.trim() : undefined,
+      guardianLastName: guardianLastName ? guardianLastName.trim() : undefined,
+      guardianTelephone: guardianTelephone ? guardianTelephone.trim() : undefined,
+      guardianMobile: guardianMobile ? guardianMobile.trim() : undefined,
       ukVisa: ukVisa ? ukVisa.trim() : undefined,
       exams: processedExams,
       candidateIdNumber: candidateIdNumber ? candidateIdNumber.trim() : undefined,
@@ -155,8 +189,25 @@ export const createExam = async (req, res) => {
 export const updateExam = async (req, res) => {
   try {
     const {
+      title,
       firstName,
       lastName,
+      otherNames,
+      familyName,
+      email,
+      dateOfBirth,
+      birthDay,
+      birthMonth,
+      birthYear,
+      gender,
+      telephone,
+      mobile,
+      specialNeeds,
+      specialNeedsDetails,
+      guardianFirstName,
+      guardianLastName,
+      guardianTelephone,
+      guardianMobile,
       ukVisa,
       exams,
       candidateIdNumber,
@@ -173,6 +224,7 @@ export const updateExam = async (req, res) => {
     }
 
     // Update fields
+    if (title !== undefined) examRecord.title = title ? title.trim() : undefined;
     if (firstName !== undefined) {
       if (!firstName || !firstName.trim()) {
         return res.status(400).json({
@@ -191,15 +243,25 @@ export const updateExam = async (req, res) => {
       }
       examRecord.lastName = lastName.trim();
     }
-    if (ukVisa !== undefined) {
-      examRecord.ukVisa = ukVisa ? ukVisa.trim() : undefined;
-    }
-    if (candidateIdNumber !== undefined) {
-      examRecord.candidateIdNumber = candidateIdNumber ? candidateIdNumber.trim() : undefined;
-    }
-    if (examDate !== undefined) {
-      examRecord.examDate = examDate ? new Date(examDate) : null;
-    }
+    if (otherNames !== undefined) examRecord.otherNames = otherNames ? otherNames.trim() : undefined;
+    if (familyName !== undefined) examRecord.familyName = familyName ? familyName.trim() : undefined;
+    if (email !== undefined) examRecord.email = email ? email.trim() : undefined;
+    if (dateOfBirth !== undefined) examRecord.dateOfBirth = dateOfBirth ? new Date(dateOfBirth) : null;
+    if (birthDay !== undefined) examRecord.birthDay = birthDay ? birthDay.trim() : undefined;
+    if (birthMonth !== undefined) examRecord.birthMonth = birthMonth ? birthMonth.trim() : undefined;
+    if (birthYear !== undefined) examRecord.birthYear = birthYear ? birthYear.trim() : undefined;
+    if (gender !== undefined) examRecord.gender = gender ? gender.trim() : undefined;
+    if (telephone !== undefined) examRecord.telephone = telephone ? telephone.trim() : undefined;
+    if (mobile !== undefined) examRecord.mobile = mobile ? mobile.trim() : undefined;
+    if (specialNeeds !== undefined) examRecord.specialNeeds = specialNeeds ? specialNeeds.trim() : undefined;
+    if (specialNeedsDetails !== undefined) examRecord.specialNeedsDetails = specialNeedsDetails ? specialNeedsDetails.trim() : undefined;
+    if (guardianFirstName !== undefined) examRecord.guardianFirstName = guardianFirstName ? guardianFirstName.trim() : undefined;
+    if (guardianLastName !== undefined) examRecord.guardianLastName = guardianLastName ? guardianLastName.trim() : undefined;
+    if (guardianTelephone !== undefined) examRecord.guardianTelephone = guardianTelephone ? guardianTelephone.trim() : undefined;
+    if (guardianMobile !== undefined) examRecord.guardianMobile = guardianMobile ? guardianMobile.trim() : undefined;
+    if (ukVisa !== undefined) examRecord.ukVisa = ukVisa ? ukVisa.trim() : undefined;
+    if (candidateIdNumber !== undefined) examRecord.candidateIdNumber = candidateIdNumber ? candidateIdNumber.trim() : undefined;
+    if (examDate !== undefined) examRecord.examDate = examDate ? new Date(examDate) : null;
     
     // Update exams if provided
     if (exams !== undefined && Array.isArray(exams)) {

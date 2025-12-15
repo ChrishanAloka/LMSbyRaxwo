@@ -109,7 +109,7 @@ const CoursesPage = () => {
         ) : (
           <div className="courses-grid">
             {filteredCourses.map(course => (
-              <CourseCard key={course.id} course={course} />
+              <CourseCard key={course._id || course.id || course.name} course={course} />
             ))}
           </div>
         )}

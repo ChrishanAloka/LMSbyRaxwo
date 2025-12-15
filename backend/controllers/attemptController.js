@@ -8,13 +8,20 @@ import { sendClassAttemptSMS } from '../services/smsService.js';
 // @access  Public
 export const attemptClass = async (req, res) => {
   try {
-    const { classId, studentId } = req.body;
+    const { classId, studentId, studentName } = req.body;
 
     // Validate input
     if (!classId || !studentId) {
       return res.status(400).json({
         success: false,
         message: 'Please provide class ID and student ID'
+      });
+    }
+
+    if (!studentName || !studentName.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide student name'
       });
     }
 
@@ -33,6 +40,34 @@ export const attemptClass = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Invalid student ID'
+      });
+    }
+
+    // Validate that the entered name matches the student's first name, last name, or full name (case-insensitive)
+    const enteredName = studentName.trim().toLowerCase();
+    const studentFullName = student.name.trim().toLowerCase();
+    
+    // Split student's full name into parts
+    const nameParts = studentFullName.split(/\s+/).filter(part => part.length > 0);
+    const studentFirstName = nameParts.length > 0 ? nameParts[0] : '';
+    const studentLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    
+    // Check if entered name matches first name, last name, or full name
+    const matchesFirstName = studentFirstName && enteredName === studentFirstName;
+    const matchesLastName = studentLastName && enteredName === studentLastName;
+    const matchesFullName = enteredName === studentFullName;
+    
+    // Also check if entered name matches any combination (e.g., "First Last" matches "First Last" or "Last First")
+    const enteredParts = enteredName.split(/\s+/).filter(part => part.length > 0);
+    const matchesReversed = enteredParts.length === nameParts.length && 
+      enteredParts.length === 2 &&
+      enteredParts[0] === nameParts[1] && 
+      enteredParts[1] === nameParts[0];
+    
+    if (!matchesFirstName && !matchesLastName && !matchesFullName && !matchesReversed) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student name does not match the student ID. Please enter your first name, last name, or full name as registered.'
       });
     }
     

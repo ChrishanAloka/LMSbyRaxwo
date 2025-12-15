@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 export const connectDB = async () => {
   try {
     // Try the SRV connection first
-    const uri = process.env.MONGO_URI || "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/lms";
+    const uri = "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/lms";
     
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 15000, // 15 seconds timeout
@@ -26,7 +26,7 @@ export const connectDB = async () => {
     console.error("   4. Try switching DNS to Google (8.8.8.8) or Cloudflare (1.1.1.1)");
     console.error("\n Server will continue but database operations will fail");
     process.exit(1);
-    return false;
+    // return false;
     // Don't exit - let server keep running
     // process.exit(1);
   }

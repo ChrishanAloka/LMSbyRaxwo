@@ -100,9 +100,14 @@ export const getPayments = async (req, res) => {
     const { month } = req.query;
     let query = {};
 
-    // Parse month filter
+    // Parse month filter - use regex to match if the selected month is included in comma-separated month strings
     if (month) {
-      query.month = month.trim();
+      const trimmedMonth = month.trim();
+      // Escape special regex characters in the month name
+      const escapedMonth = trimmedMonth.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Use regex to match the month when it appears as a complete value in a comma-separated list
+      // Matches: "January", "January, February", "February, January", etc.
+      query.month = { $regex: new RegExp(`(^|,\\s*)${escapedMonth}(\\s*,|$)`, 'i') };
     }
 
     const payments = await Payment.find(query)
