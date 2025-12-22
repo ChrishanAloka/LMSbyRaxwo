@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
 import API_CONFIG from '../../config/api';
+import { getImageUrlWithFallback } from '../../utils/imageUtils';
 import './SubjectsPage.css';
 
 const SubjectsPage = () => {
@@ -371,9 +372,7 @@ const SubjectsPage = () => {
                 <div key={subject._id} className="subject-card">
                   <div className="subject-image-container">
                     <img 
-                      src={subject.image.startsWith('/uploads/') 
-                        ? `${API_CONFIG.BASE_URL}${subject.image}` 
-                        : subject.image} 
+                      src={getImageUrlWithFallback(subject.image)} 
                       alt={subject.name} 
                       className="subject-image" 
                     />

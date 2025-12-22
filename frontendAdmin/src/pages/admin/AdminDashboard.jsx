@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
 import API_CONFIG from '../../config/api';
+import { getImageUrlWithFallback } from '../../utils/imageUtils';
 import './AdminDashboard.css';
 import revenueIcon from '../../assets/revenue.png';
 import subjectsIcon from '../../assets/subjects (2).png';
@@ -571,11 +572,7 @@ const AdminDashboard = () => {
       : '';
     const dayLabel = date ? String(date.getDate()).padStart(2, '0') : '';
 
-    const imageUrl = subject.image
-      ? subject.image.startsWith('/uploads/')
-        ? `${API_CONFIG.BASE_URL}${subject.image}`
-        : subject.image
-      : 'https://via.placeholder.com/300x200?text=Class+Image';
+    const imageUrl = getImageUrlWithFallback(subject.image, 'https://via.placeholder.com/300x200?text=Class+Image');
 
     return (
       <div key={classItem._id} className="ongoing-class-card">

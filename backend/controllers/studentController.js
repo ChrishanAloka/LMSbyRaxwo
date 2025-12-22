@@ -104,18 +104,15 @@ export const createStudent = async (req, res) => {
       finalStudentId = `ID${String(nextNumber).padStart(4, '0')}`;
     }
 
-    // Check if student already exists
+    // Check if student ID already exists (email can be duplicate for family members)
     const studentExists = await Student.findOne({
-      $or: [
-        { studentId: finalStudentId },
-        { email }
-      ]
+      studentId: finalStudentId
     });
 
     if (studentExists) {
       return res.status(400).json({
         success: false,
-        message: 'Student already exists with this Student ID or Email'
+        message: 'Student already exists with this Student ID'
       });
     }
 
@@ -137,24 +134,37 @@ export const createStudent = async (req, res) => {
     }
 
     // Create student
-    const student = await Student.create({
-      name,
-      studentId: finalStudentId,
-      email,
-      birthday,
-      gender,
-      mobile,
-      subjects: subjects || [],
-      subjectPrices: finalSubjectPrices,
-      hasSpecialNeeds: hasSpecialNeeds || false,
-      specialNeed: hasSpecialNeeds ? specialNeed : undefined,
-      specialNeedsDetails: hasSpecialNeeds ? specialNeedsDetails : undefined,
-      guardianFirstName: hasSpecialNeeds ? guardianFirstName : undefined,
-      guardianLastName: hasSpecialNeeds ? guardianLastName : undefined,
-      guardianTelephone: hasSpecialNeeds ? guardianTelephone : undefined,
-      paymentType: paymentType || undefined,
-      totalPrice: finalTotalPrice
-    });
+    // Note: Email uniqueness is not enforced - allows multiple students (family members) to share the same email
+    let student;
+    try {
+      student = await Student.create({
+        name,
+        studentId: finalStudentId,
+        email,
+        birthday,
+        gender,
+        mobile,
+        subjects: subjects || [],
+        subjectPrices: finalSubjectPrices,
+        hasSpecialNeeds: hasSpecialNeeds || false,
+        specialNeed: hasSpecialNeeds ? specialNeed : undefined,
+        specialNeedsDetails: hasSpecialNeeds ? specialNeedsDetails : undefined,
+        guardianFirstName: hasSpecialNeeds ? guardianFirstName : undefined,
+        guardianLastName: hasSpecialNeeds ? guardianLastName : undefined,
+        guardianTelephone: hasSpecialNeeds ? guardianTelephone : undefined,
+        paymentType: paymentType || undefined,
+        totalPrice: finalTotalPrice
+      });
+    } catch (createError) {
+      // If error is due to duplicate email (unique index still exists in database)
+      if (createError.code === 11000 && createError.keyPattern && createError.keyPattern.email) {
+        return res.status(400).json({
+          success: false,
+          message: 'The database still has a unique constraint on email. Please run the script: node scripts/removeEmailUniqueIndex.js (or manually drop the index in MongoDB)'
+        });
+      }
+      throw createError; // Re-throw if it's a different error
+    }
 
     // Populate subjects before sending response
     await student.populate('subjects', 'name price');
@@ -165,6 +175,24 @@ export const createStudent = async (req, res) => {
       data: student
     });
   } catch (error) {
+    // Handle duplicate key errors (unique constraint violations)
+    // Note: Email is no longer unique (allows family members to share email)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      let message = 'Duplicate entry';
+      
+      if (field === 'studentId') {
+        message = 'This Student ID already exists. Please use a different Student ID.';
+      } else {
+        message = `${field} already exists`;
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message
@@ -216,15 +244,7 @@ export const updateStudent = async (req, res) => {
       }
     }
 
-    if (email && email !== student.email) {
-      const emailExists = await Student.findOne({ email, _id: { $ne: student._id } });
-      if (emailExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Email already exists'
-        });
-      }
-    }
+    // Email can be duplicate for family members (siblings), so no duplicate check needed
 
     // Update fields
     if (name) student.name = name;
@@ -269,6 +289,24 @@ export const updateStudent = async (req, res) => {
       data: student
     });
   } catch (error) {
+    // Handle duplicate key errors (unique constraint violations)
+    // Note: Email is no longer unique (allows family members to share email)
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern || {})[0];
+      let message = 'Duplicate entry';
+      
+      if (field === 'studentId') {
+        message = 'This Student ID already exists. Please use a different Student ID.';
+      } else {
+        message = `${field} already exists`;
+      }
+      
+      return res.status(400).json({
+        success: false,
+        message: message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message

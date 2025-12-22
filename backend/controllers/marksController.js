@@ -66,20 +66,58 @@ export const getMarksByStudentId = async (req, res) => {
   }
 };
 
-// @desc    Validate student ID
-// @route   GET /api/marks/validate-student/:studentId
+// @desc    Validate student by ID, first name, last name, or full name
+// @route   GET /api/marks/validate-student/:identifier
 // @access  Private
 export const validateStudent = async (req, res) => {
   try {
-    const { studentId } = req.params;
+    const { studentId: identifier } = req.params;
+    const searchTerm = identifier.trim();
     
-    const student = await Student.findOne({ studentId: studentId })
+    // Try to find student by ID first
+    let student = await Student.findOne({ studentId: searchTerm })
       .populate('subjects', 'name _id');
+
+    // If not found by ID, try searching by name (first name, last name, or full name)
+    if (!student) {
+      // Fetch all students and match by name
+      const allStudents = await Student.find().select('name studentId subjects');
+      
+      // Find student by matching first name, last name, or full name (case-insensitive)
+      student = allStudents.find(s => {
+        const studentName = (s.name || '').trim().toLowerCase();
+        const searchLower = searchTerm.toLowerCase();
+        
+        // Split student's full name into parts
+        const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
+        const firstName = nameParts.length > 0 ? nameParts[0] : '';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        
+        // Check if search term matches first name, last name, or full name
+        const matchesFirstName = firstName && searchLower === firstName;
+        const matchesLastName = lastName && searchLower === lastName;
+        const matchesFullName = searchLower === studentName;
+        
+        // Also check if search term matches reversed full name (e.g., "Last First" matches "First Last")
+        const searchParts = searchLower.split(/\s+/).filter(part => part.length > 0);
+        const matchesReversed = searchParts.length === nameParts.length && 
+          searchParts.length === 2 &&
+          searchParts[0] === nameParts[1] && 
+          searchParts[1] === nameParts[0];
+        
+        return matchesFirstName || matchesLastName || matchesFullName || matchesReversed;
+      });
+      
+      // If found, populate subjects
+      if (student) {
+        await student.populate('subjects', 'name _id');
+      }
+    }
 
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: 'Invalid Student ID. Student not found.',
+        message: 'Student not found. Please enter a valid Student ID, first name, last name, or full name.',
         valid: false
       });
     }

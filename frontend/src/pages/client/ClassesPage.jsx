@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import API_CONFIG from '../../config/api';
+import { getImageUrlWithFallback } from '../../utils/imageUtils';
 import './ClassesPage.css';
 import teacherIcon from '../../assets/teacher.png';
 import dateIcon from '../../assets/date.png';
@@ -16,8 +17,7 @@ const ClassesPage = () => {
   const [attemptedClasses, setAttemptedClasses] = useState({});
   const [showStudentIdModal, setShowStudentIdModal] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState(null);
-  const [studentIdInput, setStudentIdInput] = useState('');
-  const [studentNameInput, setStudentNameInput] = useState('');
+  const [studentInput, setStudentInput] = useState(''); // Single input for ID or Name
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
 
@@ -104,19 +104,13 @@ const ClassesPage = () => {
   const handleAttemptClick = (classId) => {
     setSelectedClassId(classId);
     setShowStudentIdModal(true);
-    setStudentIdInput('');
-    setStudentNameInput('');
+    setStudentInput('');
     setErrorMessage('');
   };
 
   const handleAttemptClass = async () => {
-    if (!studentIdInput.trim()) {
-      setErrorMessage('Please enter your student ID');
-      return;
-    }
-
-    if (!studentNameInput.trim()) {
-      setErrorMessage('Please enter your name');
+    if (!studentInput.trim()) {
+      setErrorMessage('Please enter your Student ID or Name');
       return;
     }
 
@@ -128,8 +122,8 @@ const ClassesPage = () => {
         },
         body: JSON.stringify({
           classId: selectedClassId,
-          studentId: studentIdInput.trim(),
-          studentName: studentNameInput.trim()
+          studentId: studentInput.trim(),
+          studentName: studentInput.trim() // Send same value for both, backend will handle validation
         })
       });
 
@@ -137,7 +131,10 @@ const ClassesPage = () => {
 
       if (response.ok && data.success) {
         // Update attempted status
-        const attemptData = { attempted: true, studentId: studentIdInput.trim() };
+        const attemptData = { 
+          attempted: true, 
+          studentId: studentInput.trim()
+        };
         setAttemptedClasses(prev => ({
           ...prev,
           [selectedClassId]: attemptData
@@ -149,13 +146,12 @@ const ClassesPage = () => {
         localStorage.setItem('attemptedClasses', JSON.stringify(storedAttempts));
         
         setShowStudentIdModal(false);
-        setStudentIdInput('');
-        setStudentNameInput('');
+        setStudentInput('');
         setErrorMessage('');
         fetchClasses(); // Refresh classes to update counts
         alert('Successfully attempted class!');
       } else {
-        setErrorMessage(data.message || 'Invalid student ID or name');
+        setErrorMessage(data.message || 'Student not found. Please check that your Student ID or Name is registered in the system.');
       }
     } catch (err) {
       console.error('Error attempting class:', err);
@@ -262,11 +258,11 @@ const ClassesPage = () => {
                 {classItem.subjectId?.image && (
                   <div className="class-image-container">
                     <img 
-                      src={`${API_CONFIG.BASE_URL}${classItem.subjectId.image}`} 
+                      src={getImageUrlWithFallback(classItem.subjectId.image)} 
                       alt={classItem.subjectId.name}
                       className="class-image"
                       onError={(e) => {
-                        console.error('Image failed to load:', `${API_CONFIG.BASE_URL}${classItem.subjectId.image}`);
+                        console.error('Image failed to load:', getImageUrlWithFallback(classItem.subjectId.image));
                         e.target.style.display = 'none';
                       }}
                     />
@@ -364,31 +360,21 @@ const ClassesPage = () => {
             <h2>Enter Student Information</h2>
             <div className="modal-body">
               <div className="form-group">
-                <label htmlFor="studentId">Student ID *</label>
+                <label htmlFor="studentInput">Student ID or Name *</label>
                 <input
                   type="text"
-                  id="studentId"
-                  value={studentIdInput}
+                  id="studentInput"
+                  value={studentInput}
                   onChange={(e) => {
-                    setStudentIdInput(e.target.value);
+                    setStudentInput(e.target.value);
                     setErrorMessage('');
                   }}
-                  placeholder="Enter your student ID"
+                  placeholder="Enter Student ID or Name"
                   autoFocus
                 />
-              </div>
-              <div className="form-group">
-                <label htmlFor="studentName">Student Name *</label>
-                <input
-                  type="text"
-                  id="studentName"
-                  value={studentNameInput}
-                  onChange={(e) => {
-                    setStudentNameInput(e.target.value);
-                    setErrorMessage('');
-                  }}
-                  placeholder="Enter first name, last name, or full name"
-                />
+                <small style={{ display: 'block', marginTop: '5px', color: '#666', fontSize: '0.9em' }}>
+                  You can enter your Student ID or your Name 
+                </small>
               </div>
               {errorMessage && (
                 <span className="error-message">{errorMessage}</span>

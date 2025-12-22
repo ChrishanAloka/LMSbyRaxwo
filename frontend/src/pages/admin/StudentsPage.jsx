@@ -343,6 +343,16 @@ const StudentsPage = () => {
       setLoading(false);
       return;
     }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail.toLowerCase())) {
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
+    
+    // Email can be duplicate for family members (siblings), so no duplicate check needed
     if (!formData.birthday) {
       setError('Please select birthday');
       setLoading(false);

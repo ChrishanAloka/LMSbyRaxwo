@@ -13,6 +13,9 @@ const MarksPage = () => {
   const [validatedStudent, setValidatedStudent] = useState(null);
   const [validatingStudent, setValidatingStudent] = useState(false);
   const [studentValidationError, setStudentValidationError] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allStudents, setAllStudents] = useState([]);
   const [subjectMarks, setSubjectMarks] = useState([]);
   const [editingMarks, setEditingMarks] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
@@ -25,7 +28,24 @@ const MarksPage = () => {
   useEffect(() => {
     fetchMarks();
     fetchSubjects();
+    fetchAllStudents();
   }, []);
+
+  const fetchAllStudents = async () => {
+    try {
+      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllStudents(data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    }
+  };
 
   const fetchSubjects = async () => {
     setLoadingSubjects(true);
@@ -78,9 +98,126 @@ const MarksPage = () => {
     }
   };
 
+  // Get student suggestions based on search input
+  const getStudentSuggestions = (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 1) {
+      return [];
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    const suggestions = [];
+
+    allStudents.forEach(student => {
+      const studentName = (student.name || '').trim().toLowerCase();
+      const studentId = (student.studentId || '').toLowerCase();
+      
+      // Check if search matches student ID
+      if (studentId.includes(searchLower)) {
+        suggestions.push({
+          ...student,
+          matchType: 'ID',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+        return;
+      }
+
+      // Split student's full name into parts
+      const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
+      const firstName = nameParts.length > 0 ? nameParts[0] : '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      const fullName = studentName;
+
+      // Check if search matches first name, last name, or full name (partial match)
+      const matchesFirstName = firstName && firstName.startsWith(searchLower);
+      const matchesLastName = lastName && lastName.startsWith(searchLower);
+      const matchesFullName = fullName.includes(searchLower);
+      
+      // Check if search matches any part of the name
+      const matchesAnyPart = nameParts.some(part => part.startsWith(searchLower));
+
+      if (matchesFirstName || matchesLastName || matchesFullName || matchesAnyPart) {
+        suggestions.push({
+          ...student,
+          matchType: 'Name',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+      }
+    });
+
+    // Sort: exact ID matches first, then name matches
+    return suggestions.sort((a, b) => {
+      if (a.matchType === 'ID' && b.matchType !== 'ID') return -1;
+      if (a.matchType !== 'ID' && b.matchType === 'ID') return 1;
+      return a.name.localeCompare(b.name);
+    }).slice(0, 10); // Limit to 10 suggestions
+  };
+
+  const handleStudentSearchChange = (e) => {
+    const searchTerm = e.target.value;
+    setStudentIdInput(searchTerm);
+    
+    if (searchTerm.trim()) {
+      const suggestions = getStudentSuggestions(searchTerm);
+      setStudentSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } else {
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+    }
+
+    setValidatedStudent(null);
+    setStudentValidationError('');
+    setSubjectMarks([]);
+  };
+
+  const handleStudentSuggestionSelect = async (student) => {
+    setStudentIdInput(`${student.name} (ID: ${student.studentId})`);
+    setStudentSuggestions([]);
+    setShowSuggestions(false);
+    
+    // Validate the selected student through the backend
+    setValidatingStudent(true);
+    setStudentValidationError('');
+    
+    try {
+      const response = await fetch(`${API_CONFIG.API_URL}/marks/validate-student/${student.studentId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+
+      if (data.success && data.valid) {
+        setValidatedStudent(data.data);
+        setSubjectMarks([{
+          subjectId: '',
+          subjectName: '',
+          marks: '',
+          grade: ''
+        }]);
+        setStudentValidationError('');
+      } else {
+        setStudentValidationError(data.message || 'Invalid Student ID. Student not found.');
+        setValidatedStudent(null);
+        setSubjectMarks([]);
+      }
+    } catch (err) {
+      setStudentValidationError('Network error. Please try again.');
+      setValidatedStudent(null);
+      setSubjectMarks([]);
+    } finally {
+      setValidatingStudent(false);
+    }
+  };
+
   const validateStudentId = async () => {
     if (!studentIdInput.trim()) {
-      setStudentValidationError('Please enter a Student ID');
+      setStudentValidationError('Please enter a Student ID, first name, last name, or full name');
+      return;
+    }
+
+    // If student is already selected from suggestions, skip validation
+    if (validatedStudent) {
       return;
     }
 
@@ -419,22 +556,64 @@ const MarksPage = () => {
                 {error && <div className="error-message">{error}</div>}
                 
                 <div className="form-group">
-                  <label htmlFor="studentId">Student ID <span className="required">*</span></label>
+                  <label htmlFor="studentId">Student ID or Name <span className="required">*</span></label>
                   <div className="student-id-input-group">
-                    <input
-                      type="text"
-                      id="studentId"
-                      value={studentIdInput}
-                      onChange={(e) => {
-                        setStudentIdInput(e.target.value);
-                        setStudentValidationError('');
-                        setValidatedStudent(null);
-                        setSubjectMarks([]);
-                      }}
-                      placeholder="Enter Student ID"
-                      disabled={!!editingMarks}
-                      required
-                    />
+                    <div className="student-search-container" style={{ position: 'relative', width: '100%' }}>
+                      <input
+                        type="text"
+                        id="studentId"
+                        value={studentIdInput}
+                        onChange={handleStudentSearchChange}
+                        onFocus={() => {
+                          if (studentIdInput && !editingMarks) {
+                            const suggestions = getStudentSuggestions(studentIdInput);
+                            setStudentSuggestions(suggestions);
+                            setShowSuggestions(suggestions.length > 0);
+                          }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowSuggestions(false), 200);
+                        }}
+                        placeholder="Type Student ID, first name, last name, or full name..."
+                        disabled={!!editingMarks}
+                        required
+                        autoComplete="off"
+                        style={{ width: '100%' }}
+                      />
+                      {showSuggestions && studentSuggestions.length > 0 && !editingMarks && (
+                        <div className="student-suggestions-dropdown" style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 1000,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          marginTop: '2px'
+                        }}>
+                          {studentSuggestions.map((student, index) => (
+                            <div
+                              key={student._id || index}
+                              onClick={() => handleStudentSuggestionSelect(student)}
+                              style={{
+                                padding: '10px',
+                                cursor: 'pointer',
+                                borderBottom: index < studentSuggestions.length - 1 ? '1px solid #eee' : 'none'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                            >
+                              <div style={{ fontWeight: 'bold' }}>{student.name}</div>
+                              <div style={{ fontSize: '0.9em', color: '#666' }}>ID: {student.studentId}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {!editingMarks && (
                       <button
                         type="button"

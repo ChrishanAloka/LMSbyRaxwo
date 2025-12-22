@@ -14,6 +14,9 @@ const ExamPage = () => {
   const [validatedStudent, setValidatedStudent] = useState(null);
   const [validatingStudent, setValidatingStudent] = useState(false);
   const [studentValidationError, setStudentValidationError] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allStudents, setAllStudents] = useState([]);
   const [formData, setFormData] = useState({
     exam: '',
     examDate: '',
@@ -212,9 +215,162 @@ const ExamPage = () => {
     }
   };
 
+  // Fetch all students on mount for autocomplete
+  useEffect(() => {
+    const fetchAllStudents = async () => {
+      try {
+        const response = await fetch(`${API_CONFIG.API_URL}/students`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          setAllStudents(data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching students:', err);
+      }
+    };
+    fetchAllStudents();
+  }, []);
+
+  // Get student suggestions based on search input
+  const getStudentSuggestions = (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 1) {
+      return [];
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    const suggestions = [];
+
+    allStudents.forEach(student => {
+      const studentName = (student.name || '').trim().toLowerCase();
+      const studentId = (student.studentId || '').toLowerCase();
+      
+      // Check if search matches student ID
+      if (studentId.includes(searchLower)) {
+        suggestions.push({
+          ...student,
+          matchType: 'ID',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+        return;
+      }
+
+      // Split student's full name into parts
+      const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
+      const firstName = nameParts.length > 0 ? nameParts[0] : '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      const fullName = studentName;
+
+      // Check if search matches first name, last name, or full name (partial match)
+      const matchesFirstName = firstName && firstName.startsWith(searchLower);
+      const matchesLastName = lastName && lastName.startsWith(searchLower);
+      const matchesFullName = fullName.includes(searchLower);
+      
+      // Check if search matches any part of the name
+      const matchesAnyPart = nameParts.some(part => part.startsWith(searchLower));
+
+      if (matchesFirstName || matchesLastName || matchesFullName || matchesAnyPart) {
+        suggestions.push({
+          ...student,
+          matchType: 'Name',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+      }
+    });
+
+    // Sort: exact ID matches first, then name matches
+    return suggestions.sort((a, b) => {
+      if (a.matchType === 'ID' && b.matchType !== 'ID') return -1;
+      if (a.matchType !== 'ID' && b.matchType === 'ID') return 1;
+      return a.name.localeCompare(b.name);
+    }).slice(0, 10); // Limit to 10 suggestions
+  };
+
+  const handleStudentSearchChange = (e) => {
+    const searchTerm = e.target.value;
+    setStudentIdInput(searchTerm);
+    
+    if (searchTerm.trim()) {
+      const suggestions = getStudentSuggestions(searchTerm);
+      setStudentSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } else {
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+    }
+
+    setValidatedStudent(null);
+    setStudentValidationError('');
+  };
+
+  const handleStudentSuggestionSelect = (student) => {
+    setStudentIdInput(`${student.name} (ID: ${student.studentId})`);
+    setStudentSuggestions([]);
+    setShowSuggestions(false);
+    setValidatedStudent(student);
+    setStudentValidationError('');
+    setShowForm(true);
+    // Pre-fill form with student data
+    const nameParts = (student.name || '').trim().split(/\s+/);
+    const firstName = nameParts.shift() || '';
+    const lastName = nameParts.join(' ');
+    
+    // Extract date of birth components
+    let birthDay = '', birthMonth = '', birthYear = '';
+    if (student.birthday) {
+      const dob = new Date(student.birthday);
+      birthDay = dob.getDate().toString();
+      birthMonth = (dob.getMonth() + 1).toString();
+      birthYear = dob.getFullYear().toString();
+    }
+    
+    // Format mobile number for display
+    let mobileDisplay = '';
+    if (student.mobile) {
+      let mobile = student.mobile;
+      if (mobile.startsWith('+94')) {
+        mobile = mobile.substring(3);
+      } else if (mobile.startsWith('0')) {
+        mobile = mobile.substring(1);
+      }
+      mobileDisplay = mobile.replace(/\D/g, '');
+    }
+    
+    setFormData({
+      exam: '',
+      examDate: '',
+      title: student.title || '',
+      otherNames: firstName,
+      familyName: lastName,
+      email: student.email || '',
+      birthDay: birthDay,
+      birthMonth: birthMonth,
+      birthYear: birthYear,
+      gender: student.gender || '',
+      telephone: '',
+      mobile: mobileDisplay,
+      specialNeeds: student.hasSpecialNeeds ? 'Yes' : 'No',
+      specialNeedsDetails: student.specialNeedsDetails || '',
+      guardianFirstName: student.guardianFirstName || '',
+      guardianLastName: student.guardianLastName || '',
+      guardianTelephone: student.guardianTelephone || '',
+      guardianMobile: '',
+      ukVisa: '',
+      candidateIdNumber: ''
+    });
+  };
+
   const validateStudentId = async () => {
     if (!studentIdInput.trim()) {
-      setStudentValidationError('Please enter a Student ID');
+      setStudentValidationError('Please enter a Student ID, first name, last name, or full name');
+      return;
+    }
+
+    // If student is already selected from suggestions, skip validation
+    if (validatedStudent) {
       return;
     }
 
@@ -231,7 +387,37 @@ const ExamPage = () => {
       const data = await response.json();
       
       if (data.success) {
-        const student = data.data.find(s => s.studentId === studentIdInput.trim());
+        const searchTerm = studentIdInput.trim();
+        // Try to find student by ID first
+        let student = data.data.find(s => s.studentId === searchTerm);
+        
+        // If not found by ID, try searching by name (first name, last name, or full name)
+        if (!student) {
+          student = data.data.find(s => {
+            const studentName = (s.name || '').trim().toLowerCase();
+            const searchLower = searchTerm.toLowerCase();
+            
+            // Split student's full name into parts
+            const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
+            const firstName = nameParts.length > 0 ? nameParts[0] : '';
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+            
+            // Check if search term matches first name, last name, or full name
+            const matchesFirstName = firstName && searchLower === firstName;
+            const matchesLastName = lastName && searchLower === lastName;
+            const matchesFullName = searchLower === studentName;
+            
+            // Also check if search term matches reversed full name (e.g., "Last First" matches "First Last")
+            const searchParts = searchLower.split(/\s+/).filter(part => part.length > 0);
+            const matchesReversed = searchParts.length === nameParts.length && 
+              searchParts.length === 2 &&
+              searchParts[0] === nameParts[1] && 
+              searchParts[1] === nameParts[0];
+            
+            return matchesFirstName || matchesLastName || matchesFullName || matchesReversed;
+          });
+        }
+        
         if (student) {
           setValidatedStudent(student);
           setStudentValidationError('');
@@ -293,7 +479,7 @@ const ExamPage = () => {
             candidateIdNumber: ''
           });
         } else {
-          setStudentValidationError('Student ID not found. Please enter a valid Student ID.');
+          setStudentValidationError('Student not found. Please enter a valid Student ID, first name, last name, or full name.');
           setValidatedStudent(null);
         }
       } else {
@@ -807,23 +993,64 @@ const ExamPage = () => {
                 {success && <div className="success-message">{success}</div>}
 
                 <div className="form-group">
-                  <label htmlFor="studentIdInput">Student ID <span className="required">*</span></label>
+                  <label htmlFor="studentIdInput">Student ID or Name <span className="required">*</span></label>
                   <div className="student-id-validation">
-                     <input
-                       type="text"
-                       id="studentIdInput"
-                       value={studentIdInput}
-                       onChange={(e) => {
-                         setStudentIdInput(e.target.value);
-                         setStudentValidationError('');
-                         if (validatedStudent) {
-                           setValidatedStudent(null);
-                         }
-                       }}
-                       placeholder="Enter student ID"
-                       disabled={!!validatedStudent}
-                       required
-                     />
+                    <div className="student-search-container" style={{ position: 'relative', width: '100%' }}>
+                      <input
+                        type="text"
+                        id="studentIdInput"
+                        value={studentIdInput}
+                        onChange={handleStudentSearchChange}
+                        onFocus={() => {
+                          if (studentIdInput) {
+                            const suggestions = getStudentSuggestions(studentIdInput);
+                            setStudentSuggestions(suggestions);
+                            setShowSuggestions(suggestions.length > 0);
+                          }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowSuggestions(false), 200);
+                        }}
+                        placeholder="Type Student ID, first name, last name, or full name..."
+                        disabled={!!validatedStudent}
+                        required
+                        autoComplete="off"
+                        style={{ width: '100%' }}
+                      />
+                      {showSuggestions && studentSuggestions.length > 0 && (
+                        <div className="student-suggestions-dropdown" style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 1000,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          marginTop: '2px'
+                        }}>
+                          {studentSuggestions.map((student, index) => (
+                            <div
+                              key={student._id || index}
+                              onClick={() => handleStudentSuggestionSelect(student)}
+                              style={{
+                                padding: '10px',
+                                cursor: 'pointer',
+                                borderBottom: index < studentSuggestions.length - 1 ? '1px solid #eee' : 'none'
+                              }}
+                              onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                            >
+                              <div style={{ fontWeight: 'bold' }}>{student.name}</div>
+                              <div style={{ fontSize: '0.9em', color: '#666' }}>ID: {student.studentId}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {!validatedStudent && (
                       <button
                         type="button"

@@ -23,6 +23,9 @@ const PaymentPage = () => {
     paymentMethod: '',
     paymentDate: ''
   });
+  const [studentSuggestions, setStudentSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [studentSearchInput, setStudentSearchInput] = useState('');
   const [editFormData, setEditFormData] = useState({
     selectedSubjects: [],
     selectedMonths: [],
@@ -147,28 +150,100 @@ const PaymentPage = () => {
     }
   };
 
-  const handleStudentIdChange = (e) => {
-    const studentId = e.target.value.trim();
+  // Get student suggestions based on search input
+  const getStudentSuggestions = (searchTerm) => {
+    if (!searchTerm || searchTerm.length < 1) {
+      return [];
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    const suggestions = [];
+
+    students.forEach(student => {
+      const studentName = (student.name || '').trim().toLowerCase();
+      const studentId = (student.studentId || '').toLowerCase();
+      
+      // Check if search matches student ID
+      if (studentId.includes(searchLower)) {
+        suggestions.push({
+          ...student,
+          matchType: 'ID',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+        return;
+      }
+
+      // Split student's full name into parts
+      const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
+      const firstName = nameParts.length > 0 ? nameParts[0] : '';
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+      const fullName = studentName;
+
+      // Check if search matches first name, last name, or full name (partial match)
+      const matchesFirstName = firstName && firstName.startsWith(searchLower);
+      const matchesLastName = lastName && lastName.startsWith(searchLower);
+      const matchesFullName = fullName.includes(searchLower);
+      
+      // Check if search matches any part of the name
+      const matchesAnyPart = nameParts.some(part => part.startsWith(searchLower));
+
+      if (matchesFirstName || matchesLastName || matchesFullName || matchesAnyPart) {
+        suggestions.push({
+          ...student,
+          matchType: 'Name',
+          displayText: `${student.name} (ID: ${student.studentId})`
+        });
+      }
+    });
+
+    // Sort: exact ID matches first, then name matches
+    return suggestions.sort((a, b) => {
+      if (a.matchType === 'ID' && b.matchType !== 'ID') return -1;
+      if (a.matchType !== 'ID' && b.matchType === 'ID') return 1;
+      return a.name.localeCompare(b.name);
+    }).slice(0, 10); // Limit to 10 suggestions
+  };
+
+  const handleStudentSearchChange = (e) => {
+    const searchTerm = e.target.value;
+    setStudentSearchInput(searchTerm);
+    
+    if (searchTerm.trim()) {
+      const suggestions = getStudentSuggestions(searchTerm);
+      setStudentSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } else {
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+    }
+
+    setSelectedStudent(null);
     setFormData({
       ...formData,
-      studentId,
+      studentId: '',
       selectedSubjects: [],
       selectedMonths: []
     });
-    setSelectedStudent(null);
     setError('');
     setSuccess('');
+  };
 
-    if (studentId) {
-      const student = students.find(s => s.studentId === studentId);
-      if (student) {
-        setSelectedStudent(student);
-        setError('');
-      } else {
-        setError('Student ID not found. Please enter a valid registered student ID.');
-        setSelectedStudent(null);
-      }
-    }
+  const handleStudentSuggestionSelect = (student) => {
+    setStudentSearchInput(`${student.name} (ID: ${student.studentId})`);
+    setFormData({
+      ...formData,
+      studentId: student.studentId, // Store the actual student ID for SMS
+      selectedSubjects: [],
+      selectedMonths: []
+    });
+    setSelectedStudent(student);
+    setStudentSuggestions([]);
+    setShowSuggestions(false);
+    setError('');
+  };
+
+  const handleStudentIdChange = (e) => {
+    handleStudentSearchChange(e);
   };
 
   const handleSubjectToggle = (subjectId) => {
@@ -240,14 +315,8 @@ const PaymentPage = () => {
     setLoading(true);
 
     // Validation
-    if (!formData.studentId) {
-      setError('Please enter a student ID');
-      setLoading(false);
-      return;
-    }
-
-    if (!selectedStudent) {
-      setError('Please enter a valid registered student ID');
+    if (!formData.studentId || !selectedStudent) {
+      setError('Please select a student from the suggestions or enter a valid Student ID, first name, last name, or full name');
       setLoading(false);
       return;
     }
@@ -639,16 +708,62 @@ const PaymentPage = () => {
             {success && <div className="success-message">{success}</div>}
 
             <div className="form-group">
-              <label htmlFor="studentId">Student ID *</label>
-              <input
-                type="text"
-                id="studentId"
-                name="studentId"
-                value={formData.studentId}
-                onChange={handleStudentIdChange}
-                placeholder="Enter student ID"
-                required
-              />
+              <label htmlFor="studentId">Student ID or Name *</label>
+              <div className="student-search-container" style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  id="studentId"
+                  name="studentId"
+                  value={studentSearchInput || (selectedStudent ? `${selectedStudent.name} (ID: ${selectedStudent.studentId})` : '')}
+                  onChange={handleStudentSearchChange}
+                  onFocus={() => {
+                    if (studentSearchInput) {
+                      const suggestions = getStudentSuggestions(studentSearchInput);
+                      setStudentSuggestions(suggestions);
+                      setShowSuggestions(suggestions.length > 0);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Delay hiding suggestions to allow click
+                    setTimeout(() => setShowSuggestions(false), 200);
+                  }}
+                  placeholder="Type Student ID, first name, last name, or full name..."
+                  required
+                  autoComplete="off"
+                />
+                {showSuggestions && studentSuggestions.length > 0 && (
+                  <div className="student-suggestions-dropdown" style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  }}>
+                    {studentSuggestions.map((student, index) => (
+                      <div
+                        key={student._id || index}
+                        onClick={() => handleStudentSuggestionSelect(student)}
+                        style={{
+                          padding: '10px',
+                          cursor: 'pointer',
+                          borderBottom: index < studentSuggestions.length - 1 ? '1px solid #eee' : 'none'
+                        }}
+                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
+                        onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                      >
+                        <div style={{ fontWeight: 'bold' }}>{student.name}</div>
+                        <div style={{ fontSize: '0.9em', color: '#666' }}>ID: {student.studentId}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {selectedStudent && (
                 <div className="student-info">
                   <p><strong>Student:</strong> {selectedStudent.name}</p>

@@ -10,20 +10,16 @@ export const attemptClass = async (req, res) => {
   try {
     const { classId, studentId, studentName } = req.body;
 
-    // Validate input
-    if (!classId || !studentId) {
+    // Validate input - studentId and studentName can be the same value (single input field)
+    if (!classId || !studentId || !studentId.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide class ID and student ID'
+        message: 'Please provide class ID and student ID or name'
       });
     }
 
-    if (!studentName || !studentName.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide student name'
-      });
-    }
+    // Use the same input value for both ID and name search
+    const searchValue = studentId.trim();
 
     // Verify class exists and populate subject
     const classInstance = await Class.findById(classId).populate('subjectId', 'name');
@@ -34,40 +30,44 @@ export const attemptClass = async (req, res) => {
       });
     }
 
-    // Verify student exists and include mobile field
-    const student = await Student.findOne({ studentId: studentId }).select('name email studentId mobile');
+    // Verify student exists by ID OR by name (single input field - can be ID or name)
+    // First try to find by student ID
+    let student = await Student.findOne({ studentId: searchValue }).select('name email studentId mobile firstName lastName');
+    
+    // If not found by ID, try to find by name (first name, last name, or full name)
+    if (!student) {
+      const enteredName = searchValue.toLowerCase();
+      const allStudents = await Student.find().select('name email studentId mobile firstName lastName');
+      
+      // Find student by matching name (first name, last name, or full name)
+      student = allStudents.find(s => {
+        const studentNameLower = (s.name || '').trim().toLowerCase();
+        const nameParts = studentNameLower.split(/\s+/).filter(part => part.length > 0);
+        const firstName = nameParts.length > 0 ? nameParts[0] : '';
+        const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+        const fullName = studentNameLower;
+        
+        // Check if entered name matches first name, last name, or full name
+        const matchesFirstName = firstName && enteredName === firstName;
+        const matchesLastName = lastName && enteredName === lastName;
+        const matchesFullName = enteredName === fullName;
+        
+        // Also check if entered name matches reversed full name
+        const enteredParts = enteredName.split(/\s+/).filter(part => part.length > 0);
+        const matchesReversed = enteredParts.length === nameParts.length && 
+          enteredParts.length === 2 &&
+          enteredParts[0] === nameParts[1] && 
+          enteredParts[1] === nameParts[0];
+        
+        return matchesFirstName || matchesLastName || matchesFullName || matchesReversed;
+      });
+    }
+    
+    // If student still not found, reject the attempt
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: 'Invalid student ID'
-      });
-    }
-
-    // Validate that the entered name matches the student's first name, last name, or full name (case-insensitive)
-    const enteredName = studentName.trim().toLowerCase();
-    const studentFullName = student.name.trim().toLowerCase();
-    
-    // Split student's full name into parts
-    const nameParts = studentFullName.split(/\s+/).filter(part => part.length > 0);
-    const studentFirstName = nameParts.length > 0 ? nameParts[0] : '';
-    const studentLastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-    
-    // Check if entered name matches first name, last name, or full name
-    const matchesFirstName = studentFirstName && enteredName === studentFirstName;
-    const matchesLastName = studentLastName && enteredName === studentLastName;
-    const matchesFullName = enteredName === studentFullName;
-    
-    // Also check if entered name matches any combination (e.g., "First Last" matches "First Last" or "Last First")
-    const enteredParts = enteredName.split(/\s+/).filter(part => part.length > 0);
-    const matchesReversed = enteredParts.length === nameParts.length && 
-      enteredParts.length === 2 &&
-      enteredParts[0] === nameParts[1] && 
-      enteredParts[1] === nameParts[0];
-    
-    if (!matchesFirstName && !matchesLastName && !matchesFullName && !matchesReversed) {
-      return res.status(400).json({
-        success: false,
-        message: 'Student name does not match the student ID. Please enter your first name, last name, or full name as registered.'
+        message: 'Student not found. Please check that your Student ID or Name is registered in the system.'
       });
     }
     
@@ -99,9 +99,10 @@ export const attemptClass = async (req, res) => {
     }
 
     // Check if student already has an active attempt for this class
+    // Use the found student's ID (not the input ID, in case student was found by name)
     const existingAttempt = await Attempt.findOne({ 
       classId: classId, 
-      studentId: studentId,
+      studentId: student.studentId,
       status: 'active'
     });
     
@@ -113,9 +114,10 @@ export const attemptClass = async (req, res) => {
     }
 
     // Check if student previously left this class - if so, check if class is closed
+    // Use the found student's ID (not the input ID, in case student was found by name)
     const leftAttempt = await Attempt.findOne({
       classId: classId,
-      studentId: studentId,
+      studentId: student.studentId,
       status: 'left'
     });
 

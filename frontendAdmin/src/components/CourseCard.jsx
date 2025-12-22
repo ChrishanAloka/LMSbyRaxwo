@@ -1,5 +1,5 @@
 import React from 'react';
-import API_CONFIG from '../config/api';
+import { getImageUrlWithFallback } from '../utils/imageUtils';
 import './CourseCard.css';
 
 const CourseCard = ({ 
@@ -24,13 +24,7 @@ const CourseCard = ({
     <div className="course-card">
       <div className="course-image-container">
         <img 
-          src={
-            courseImage
-              ? (String(courseImage).startsWith('/uploads/') 
-                  ? `${API_CONFIG.BASE_URL}${courseImage}` 
-                  : courseImage)
-              : "https://via.placeholder.com/300x200?text=Course+Image"
-          }
+          src={getImageUrlWithFallback(courseImage, "https://via.placeholder.com/300x200?text=Course+Image")}
           alt={courseTitle} 
           className="course-image" 
         />
