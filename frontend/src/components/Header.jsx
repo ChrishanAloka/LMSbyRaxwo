@@ -35,7 +35,7 @@ const Header = ({ onSearch }) => {
       <div className="header-container">
         <div className="logo" onClick={handleLogoClick}>
           <img src={logo} alt="Wisdom Institute Logo" className="logo-image" />
-          <span className="logo-text">WISDOM NSTITUTE</span>
+          <span className="logo-text">WISDOM INSTITUTE</span>
         </div>
 
         <div className="search-container">
