@@ -1,21 +1,6 @@
 import Subject from '../models/Subject.js';
 import Class from '../models/Class.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Helper function to resolve upload file path
-const resolveUploadPath = (imagePath) => {
-  if (!imagePath || !imagePath.startsWith('/uploads/')) {
-    return null;
-  }
-  // Remove leading '/' and join with project root
-  const relativePath = imagePath.substring(1); // Remove leading '/'
-  return path.join(__dirname, '..', relativePath);
-};
+import { uploadToS3, deleteFromS3 } from '../services/s3Service.js';
 
 // @desc    Get all subjects
 // @route   GET /api/subjects
@@ -80,10 +65,24 @@ export const createSubject = async (req, res) => {
       });
     }
 
-    // Use uploaded file path or provided URL
-    const image = req.file 
-      ? `/uploads/${req.file.filename}`
-      : req.body.image;
+    // Handle image upload to S3 or use provided URL
+    let image = req.body.image;
+
+    if (req.file) {
+      // Upload to S3
+      try {
+        const fileName = req.file.originalname;
+        const fileBuffer = req.file.buffer;
+        const mimetype = req.file.mimetype;
+        
+        image = await uploadToS3(fileBuffer, fileName, mimetype);
+      } catch (uploadError) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload image: ' + uploadError.message
+        });
+      }
+    }
 
     if (!image) {
       return res.status(400).json({
@@ -147,35 +146,33 @@ export const updateSubject = async (req, res) => {
     if (conductedBy) subject.conductedBy = conductedBy;
     if (price !== undefined) subject.price = price;
     
-    // Handle image: uploaded file or provided URL
-    const oldImage = subject.image; // Store old image path before updating
+    // Handle image: uploaded file to S3 or provided URL
+    const oldImage = subject.image; // Store old image URL before updating
     
     if (req.file) {
-      // New file uploaded - delete old image if it was a local file
-      const oldImagePath = resolveUploadPath(oldImage);
-      if (oldImagePath && fs.existsSync(oldImagePath)) {
-        try {
-          fs.unlinkSync(oldImagePath);
-          console.log(`Deleted old image file: ${oldImagePath}`);
-        } catch (fileError) {
-          console.error(`Error deleting old image file: ${fileError.message}`);
-          // Continue with update even if old file deletion fails
+      // New file uploaded - upload to S3 and delete old image from S3 if it exists
+      try {
+        const fileName = req.file.originalname;
+        const fileBuffer = req.file.buffer;
+        const mimetype = req.file.mimetype;
+        
+        const newImageUrl = await uploadToS3(fileBuffer, fileName, mimetype);
+        subject.image = newImageUrl;
+        
+        // Delete old image from S3 if it exists and is an S3 URL
+        if (oldImage && oldImage.includes('.amazonaws.com')) {
+          await deleteFromS3(oldImage);
         }
+      } catch (uploadError) {
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to upload image: ' + uploadError.message
+        });
       }
-      subject.image = `/uploads/${req.file.filename}`;
     } else if (req.body.image) {
-      // If new image URL is provided and it's different from old one, delete old local file
-      if (oldImage && oldImage.startsWith('/uploads/') && oldImage !== req.body.image) {
-        const oldImagePath = resolveUploadPath(oldImage);
-        if (oldImagePath && fs.existsSync(oldImagePath)) {
-          try {
-            fs.unlinkSync(oldImagePath);
-            console.log(`Deleted old image file: ${oldImagePath}`);
-          } catch (fileError) {
-            console.error(`Error deleting old image file: ${fileError.message}`);
-            // Continue with update even if old file deletion fails
-          }
-        }
+      // If new image URL is provided and it's different from old one, delete old image from S3
+      if (oldImage && oldImage.includes('.amazonaws.com') && oldImage !== req.body.image) {
+        await deleteFromS3(oldImage);
       }
       subject.image = req.body.image;
     }
@@ -215,21 +212,9 @@ export const deleteSubject = async (req, res) => {
       });
     }
 
-    // Delete the image file if it's a local upload
-    const imagePath = resolveUploadPath(subject.image);
-    if (imagePath) {
-      // Check if file exists and delete it
-      if (fs.existsSync(imagePath)) {
-        try {
-          fs.unlinkSync(imagePath);
-          console.log(`Deleted image file: ${imagePath}`);
-        } catch (fileError) {
-          console.error(`Error deleting image file: ${fileError.message}`);
-          // Continue with subject deletion even if file deletion fails
-        }
-      } else {
-        console.log(`Image file not found at: ${imagePath} (may have been already deleted)`);
-      }
+    // Delete the image from S3 if it's an S3 URL
+    if (subject.image && subject.image.includes('.amazonaws.com')) {
+      await deleteFromS3(subject.image);
     }
 
     // Delete the subject from database

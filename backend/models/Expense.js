@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const ExpenseSchema = new mongoose.Schema({
   year: { type: String, required: true },
   month: { type: String, required: true },
-  type: { type: String, required: true, enum: ['Water','Electricity','Internet','Maintenance','Other'] },
+  type: { type: String, required: true }, // Removed enum to allow custom types
   price: { type: Number, required: true, min: 0 },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: false },
 }, { timestamps: true });

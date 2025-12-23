@@ -19,6 +19,7 @@ import marksRoutes from './routes/marksRoutes.js';
 import attemptRoutes from './routes/attemptRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import examRoutes from './routes/examRoutes.js';
+import { testS3Upload, testS3Delete } from './controllers/testS3Controller.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -83,6 +84,10 @@ app.use('/api/marks', marksRoutes);
 app.use('/api/attempts', attemptRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/exams', examRoutes);
+
+// Test routes for S3 (remove in production)
+app.post('/api/test/s3-upload', testS3Upload);
+app.delete('/api/test/s3-delete', testS3Delete);
 
 // Connect to Database
 connectDB();

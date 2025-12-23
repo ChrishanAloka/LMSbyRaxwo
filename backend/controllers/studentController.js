@@ -73,7 +73,8 @@ export const createStudent = async (req, res) => {
       guardianFirstName,
       guardianLastName,
       guardianTelephone,
-      paymentType
+      paymentType,
+      registrationDate
     } = req.body;
 
     // Validate required fields (studentId is now optional as it will be auto-generated)
@@ -82,6 +83,23 @@ export const createStudent = async (req, res) => {
         success: false,
         message: 'Please provide all required fields'
       });
+    }
+
+    // Validate registration date if provided
+    let finalRegistrationDate = undefined;
+    if (registrationDate) {
+      if (typeof registrationDate === 'string' && registrationDate.trim()) {
+        const dateValue = new Date(registrationDate);
+        if (isNaN(dateValue.getTime())) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid registration date format'
+          });
+        }
+        finalRegistrationDate = dateValue;
+      } else if (registrationDate instanceof Date) {
+        finalRegistrationDate = registrationDate;
+      }
     }
 
     // Auto-generate student ID if not provided
@@ -153,7 +171,8 @@ export const createStudent = async (req, res) => {
         guardianLastName: hasSpecialNeeds ? guardianLastName : undefined,
         guardianTelephone: hasSpecialNeeds ? guardianTelephone : undefined,
         paymentType: paymentType || undefined,
-        totalPrice: finalTotalPrice
+        totalPrice: finalTotalPrice,
+        registrationDate: finalRegistrationDate
       });
     } catch (createError) {
       // If error is due to duplicate email (unique index still exists in database)
@@ -175,6 +194,9 @@ export const createStudent = async (req, res) => {
       data: student
     });
   } catch (error) {
+    console.error('Error creating student:', error);
+    console.error('Error stack:', error.stack);
+    
     // Handle duplicate key errors (unique constraint violations)
     // Note: Email is no longer unique (allows family members to share email)
     if (error.code === 11000) {
@@ -195,7 +217,8 @@ export const createStudent = async (req, res) => {
     
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Failed to create student',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -221,7 +244,8 @@ export const updateStudent = async (req, res) => {
       guardianFirstName,
       guardianLastName,
       guardianTelephone,
-      paymentType
+      paymentType,
+      registrationDate
     } = req.body;
 
     let student = await Student.findById(req.params.id);
@@ -277,6 +301,21 @@ export const updateStudent = async (req, res) => {
     if (guardianLastName !== undefined) student.guardianLastName = guardianLastName;
     if (guardianTelephone !== undefined) student.guardianTelephone = guardianTelephone;
     if (paymentType) student.paymentType = paymentType;
+    if (registrationDate !== undefined && registrationDate !== null && registrationDate !== '') {
+      // Validate date format
+      const dateValue = new Date(registrationDate);
+      if (!isNaN(dateValue.getTime())) {
+        student.registrationDate = dateValue;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid registration date format'
+        });
+      }
+    } else if (registrationDate === null || registrationDate === '') {
+      // Allow clearing the registration date
+      student.registrationDate = undefined;
+    }
 
     await student.save();
 
@@ -289,6 +328,9 @@ export const updateStudent = async (req, res) => {
       data: student
     });
   } catch (error) {
+    console.error('Error updating student:', error);
+    console.error('Error stack:', error.stack);
+    
     // Handle duplicate key errors (unique constraint violations)
     // Note: Email is no longer unique (allows family members to share email)
     if (error.code === 11000) {
@@ -309,7 +351,8 @@ export const updateStudent = async (req, res) => {
     
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Failed to update student',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
@@ -333,6 +376,54 @@ export const deleteStudent = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Student deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Search students for autocomplete (public endpoint)
+// @route   GET /api/students/search/autocomplete
+// @access  Public
+export const searchStudentsForAutocomplete = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.trim().length < 1) {
+      return res.status(200).json({
+        success: true,
+        data: []
+      });
+    }
+
+    const searchTerm = query.trim().toLowerCase();
+    
+    // Find students by ID or name (partial match)
+    const students = await Student.find({
+      $or: [
+        { studentId: { $regex: searchTerm, $options: 'i' } },
+        { name: { $regex: searchTerm, $options: 'i' } }
+      ]
+    })
+    .select('name studentId email')
+    .limit(10)
+    .sort({ studentId: 1 });
+
+    // Format results similar to PaymentPage front-end logic
+    const suggestions = students.map(student => ({
+      _id: student._id,
+      name: student.name,
+      studentId: student.studentId,
+      email: student.email,
+      displayText: `${student.name} (ID: ${student.studentId})`
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: suggestions
     });
   } catch (error) {
     res.status(500).json({
