@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/admin/Sidebar';
 import Topbar from '../../components/admin/Topbar';
 import API_CONFIG from '../../config/api';
+import { authenticatedFetch, getAuthHeaders } from '../../utils/apiHelper';
 import './StudentsPage.css';
 
 const StudentsPage = () => {
@@ -22,11 +23,10 @@ const StudentsPage = () => {
     selectedSubjects: [],
     subjectPrices: {}, // Store prices as { subjectId: price }
     guardianTelephone: '',
-    guardianName: ''
+    guardianName: '',
+    registrationDate: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
-
-  const token = localStorage.getItem('adminToken');
 
   useEffect(() => {
     fetchStudents();
@@ -36,17 +36,18 @@ const StudentsPage = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await authenticatedFetch(`${API_CONFIG.API_URL}/students`, {
+        method: 'GET',
       });
       const data = await response.json();
       if (data.success) {
         setStudents(data.data);
+      } else {
+        console.error('Failed to fetch students:', data.message);
       }
     } catch (err) {
       console.error('Error fetching students:', err);
+      // Error handling is done in authenticatedFetch (redirects to login if 401)
     }
   };
 
@@ -213,6 +214,11 @@ const StudentsPage = () => {
     const nameParts = (student.name || '').trim().split(/\s+/);
     const firstName = nameParts.shift() || '';
     const lastName = nameParts.join(' ');
+    
+    // Format registration date for date input (YYYY-MM-DD)
+    const registrationDateValue = student.registrationDate 
+      ? new Date(student.registrationDate).toISOString().split('T')[0] 
+      : (student.createdAt ? new Date(student.createdAt).toISOString().split('T')[0] : '');
 
     setFormData({
       firstName,
@@ -221,6 +227,7 @@ const StudentsPage = () => {
       email: student.email || '',
       birthday: birthdayDate,
       gender: student.gender || '',
+      registrationDate: registrationDateValue,
       mobile: (() => {
         // Format mobile number for display (remove +94 prefix if present, remove leading 0)
         let mobile = student.mobile || '';
@@ -278,7 +285,8 @@ const StudentsPage = () => {
       selectedSubjects: [],
       subjectPrices: {},
       guardianTelephone: '',
-      guardianName: ''
+      guardianName: '',
+      registrationDate: ''
     });
     setShowForm(false);
     setError('');
@@ -410,11 +418,10 @@ const StudentsPage = () => {
       
       const method = editingStudent ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
+      const response = await authenticatedFetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           name: `${trimmedFirstName} ${trimmedLastName}`.trim(),
@@ -452,7 +459,8 @@ const StudentsPage = () => {
           guardianName: trimmedGuardianName,
           guardianFirstName: guardianFirstName,
           guardianLastName: guardianLastName,
-          guardianTelephone: trimmedGuardianTelephone
+          guardianTelephone: trimmedGuardianTelephone,
+          registrationDate: formData.registrationDate || undefined
         })
       });
 
@@ -471,7 +479,8 @@ const StudentsPage = () => {
           selectedSubjects: [],
           subjectPrices: {},
           guardianTelephone: '',
-          guardianName: ''
+          guardianName: '',
+          registrationDate: ''
         });
         setEditingStudent(null);
         setShowForm(false);
@@ -481,6 +490,7 @@ const StudentsPage = () => {
         const errorMessage = data.message || data.error || `Failed to ${editingStudent ? 'update' : 'add'} student`;
         setError(errorMessage);
         console.error('Student submission error:', data);
+        console.error('Full error response:', JSON.stringify(data, null, 2));
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -493,11 +503,8 @@ const StudentsPage = () => {
     if (!window.confirm('Are you sure you want to delete this student?')) return;
 
     try {
-      const response = await fetch(`${API_CONFIG.API_URL}/students/${id}`, {
+      const response = await authenticatedFetch(`${API_CONFIG.API_URL}/students/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
       });
 
       const data = await response.json();
@@ -792,7 +799,18 @@ const StudentsPage = () => {
                     />
                   </div>
 
-                  
+                  <div className="form-group">
+                    <label htmlFor="registrationDate">Registration Date <span className="required">*</span></label>
+                    <input
+                      type="date"
+                      id="registrationDate"
+                      name="registrationDate"
+                      value={formData.registrationDate}
+                      onChange={handleInputChange}
+                      required
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
                 </div>
 
                 <div className="form-row">
@@ -906,6 +924,7 @@ const StudentsPage = () => {
                   <tr>
                     <th>First Name</th>
                     <th>Last Name</th>
+                    <th>Registration Date</th>
                     <th>Student Registration No.</th>
                     <th>Email Address</th>
                     <th>Date of Birth</th>
@@ -928,6 +947,7 @@ const StudentsPage = () => {
                       <tr key={student._id}>
                         <td>{firstName}</td>
                         <td>{lastName}</td>
+                        <td>{formatDate(student.registrationDate || student.createdAt)}</td>
                         <td>{student.studentId}</td>
                         <td>{student.email}</td>
                         <td>{formatDate(student.birthday)}</td>

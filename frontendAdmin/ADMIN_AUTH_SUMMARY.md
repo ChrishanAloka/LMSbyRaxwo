@@ -76,7 +76,7 @@ npm run dev
 
 ### 3. Create Admin via Postman
 ```json
-POST https://lms-f679.onrender.com/api/admin/auth/register
+POST https://lms-tili.onrender.com/api/admin/auth/register
 {
   "name": "Admin User",
   "email": "admin@example.com",
@@ -86,7 +86,7 @@ POST https://lms-f679.onrender.com/api/admin/auth/register
 
 ### 4. Login
 ```json
-POST https://lms-f679.onrender.com/api/admin/auth/login
+POST https://lms-tili.onrender.com/api/admin/auth/login
 {
   "email": "admin@example.com",
   "password": "admin123"
@@ -121,7 +121,7 @@ POST https://lms-f679.onrender.com/api/admin/auth/login
 ### Register Admin
 ```
 Method: POST
-URL: https://lms-f679.onrender.com/api/admin/auth/register
+URL: https://lms-tili.onrender.com/api/admin/auth/register
 Headers: Content-Type: application/json
 Body:
 {
@@ -134,7 +134,7 @@ Body:
 ### Login
 ```
 Method: POST
-URL: https://lms-f679.onrender.com/api/admin/auth/login
+URL: https://lms-tili.onrender.com/api/admin/auth/login
 Headers: Content-Type: application/json
 Body:
 {
@@ -146,7 +146,7 @@ Body:
 ### Access Dashboard (Protected)
 ```
 Method: GET
-URL: https://lms-f679.onrender.com/api/admin/dashboard
+URL: https://lms-tili.onrender.com/api/admin/dashboard
 Headers: 
   Authorization: Bearer YOUR_JWT_TOKEN_HERE
   Content-Type: application/json
