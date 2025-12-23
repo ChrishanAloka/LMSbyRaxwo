@@ -46,7 +46,7 @@ npm start
 
 You should see:
 ```
-Server Started on https://lms-f679.onrender.com
+Server Started on https://lms-tili.onrender.com
 Database Connected Successfully
 ```
 
@@ -80,7 +80,7 @@ VITE ready at http://localhost:5174
 
 ### Step 1: Register an Admin
 
-**POST** `https://lms-f679.onrender.com/api/admin/auth/register`
+**POST** `https://lms-tili.onrender.com/api/admin/auth/register`
 
 **Body (raw JSON):**
 ```json
@@ -109,7 +109,7 @@ VITE ready at http://localhost:5174
 
 ### Step 2: Login to Get Token
 
-**POST** `https://lms-f679.onrender.com/api/admin/auth/login`
+**POST** `https://lms-tili.onrender.com/api/admin/auth/login`
 
 **Body (raw JSON):**
 ```json
@@ -140,7 +140,7 @@ VITE ready at http://localhost:5174
 
 ### Step 3: Test Protected Route
 
-**GET** `https://lms-f679.onrender.com/api/admin/dashboard`
+**GET** `https://lms-tili.onrender.com/api/admin/dashboard`
 
 **Headers:**
 ```

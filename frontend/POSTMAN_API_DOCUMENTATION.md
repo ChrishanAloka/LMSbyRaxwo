@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://lms-f679.onrender.com/api
+https://lms-tili.onrender.com/api
 ```
 
 ---
@@ -180,7 +180,7 @@ Content-Type: application/json
 ### Setup Instructions:
 
 1. **Create Environment Variables:**
-   - `base_url`: `https://lms-f679.onrender.com/api`
+   - `base_url`: `https://lms-tili.onrender.com/api`
    - `token`: (leave empty, will be set automatically)
 
 2. **Import Requests:**
@@ -236,7 +236,7 @@ Content-Type: application/json
 
 ### Login
 ```bash
-curl -X POST https://lms-f679.onrender.com/api/admin/auth/login \
+curl -X POST https://lms-tili.onrender.com/api/admin/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@example.com",
@@ -246,14 +246,14 @@ curl -X POST https://lms-f679.onrender.com/api/admin/auth/login \
 
 ### Get Dashboard (with token)
 ```bash
-curl -X GET https://lms-f679.onrender.com/api/admin/dashboard \
+curl -X GET https://lms-tili.onrender.com/api/admin/dashboard \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -H "Content-Type: application/json"
 ```
 
 ### Register Admin
 ```bash
-curl -X POST https://lms-f679.onrender.com/api/admin/auth/register \
+curl -X POST https://lms-tili.onrender.com/api/admin/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Admin User",

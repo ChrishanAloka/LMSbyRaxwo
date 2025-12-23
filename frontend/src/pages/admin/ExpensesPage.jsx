@@ -16,6 +16,7 @@ const ExpensesPage = () => {
   const [bills, setBills] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(defaultForm);
+  const [customType, setCustomType] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,24 +85,46 @@ const ExpensesPage = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    // Clear custom type when switching away from "Other"
+    if (name === 'type' && value !== 'Other') {
+      setCustomType('');
+    }
+    setError('');
+  };
+
+  const handleCustomTypeChange = (e) => {
+    setCustomType(e.target.value);
     setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const { year, month, type, price } = formData;
+    
+    // Validate fields
     if (!year || !month || !type || !price) {
       setError('Please fill all fields.');
       return;
     }
+    
+    // If type is "Other", require custom type
+    if (type === 'Other' && !customType.trim()) {
+      setError('Please enter a custom bill type.');
+      return;
+    }
+    
+    // Use custom type if "Other" is selected, otherwise use the selected type
+    const finalType = type === 'Other' ? customType.trim() : type;
+    
     const token = localStorage.getItem('adminToken');
     try {
       if (editingId) {
         const res = await fetch(`${API_BASE}/${editingId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ year, month, type, price })
+          body: JSON.stringify({ year, month, type: finalType, price })
         });
         const data = await res.json();
         if (data.success) {
@@ -111,13 +134,14 @@ const ExpensesPage = () => {
         const res = await fetch(API_BASE, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ year, month, type, price })
+          body: JSON.stringify({ year, month, type: finalType, price })
         });
         const data = await res.json();
         if (data.success) setBills([data.data, ...bills]);
       }
     } catch (_) {}
     setFormData(defaultForm);
+    setCustomType('');
     setEditingId('');
     setShowForm(false);
   };
@@ -136,7 +160,18 @@ const ExpensesPage = () => {
   };
 
   const handleEdit = (bill) => {
-    setFormData({ year: bill.year, month: bill.month, type: bill.type, price: String(bill.price) });
+    // Check if the bill type is one of the predefined types
+    const predefinedTypes = ['Water', 'Electricity', 'Internet', 'Maintenance', 'Other'];
+    const isPredefinedType = predefinedTypes.includes(bill.type);
+    
+    // If it's not a predefined type, treat it as "Other" with custom type
+    if (!isPredefinedType) {
+      setFormData({ year: bill.year, month: bill.month, type: 'Other', price: String(bill.price) });
+      setCustomType(bill.type);
+    } else {
+      setFormData({ year: bill.year, month: bill.month, type: bill.type, price: String(bill.price) });
+      setCustomType('');
+    }
     setEditingId(bill._id);
     setShowForm(true);
     setError('');
@@ -178,7 +213,7 @@ const ExpensesPage = () => {
               >
                 Generate Report
               </button>
-              <button className="add-expense-btn" onClick={() => { setShowForm(!showForm); setFormData(defaultForm); setEditingId(''); setError(''); }}>
+              <button className="add-expense-btn" onClick={() => { setShowForm(!showForm); setFormData(defaultForm); setCustomType(''); setEditingId(''); setError(''); }}>
                 {showForm ? 'Cancel' : editingId ? 'Edit Bill' : '+ Add Bill'}
               </button>
             </div>
@@ -213,7 +248,7 @@ const ExpensesPage = () => {
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select month</option>
+                      <option value="" disabled>Select month</option>
                       {monthOptions.map((m) => (
                         <option key={m} value={m}>{m}</option>
                       ))}
@@ -231,7 +266,7 @@ const ExpensesPage = () => {
                       onChange={handleChange}
                       required
                     >
-                      <option value="">Select type</option>
+                      <option value="" disabled>Select type</option>
                       <option value="Water">Water</option>
                       <option value="Electricity">Electricity</option>
                       <option value="Internet">Internet</option>
@@ -255,8 +290,28 @@ const ExpensesPage = () => {
                   </div>
                 </div>
 
+                {formData.type === 'Other' && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label htmlFor="customType">Enter bill type *</label>
+                      <input
+                        id="customType"
+                        name="customType"
+                        type="text"
+                        placeholder="e.g. Phone, Rent, Supplies, etc."
+                        value={customType}
+                        onChange={handleCustomTypeChange}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      {/* Empty div to maintain layout */}
+                    </div>
+                  </div>
+                )}
+
                 <div className="form-actions">
-                  <button type="button" className="cancel-btn" onClick={() => { setShowForm(false); setFormData(defaultForm); setEditingId(''); setError(''); }}>Cancel</button>
+                  <button type="button" className="cancel-btn" onClick={() => { setShowForm(false); setFormData(defaultForm); setCustomType(''); setEditingId(''); setError(''); }}>Cancel</button>
                   <button type="submit" className="submit-btn">{editingId ? 'Update Bill' : 'Add Bill'}</button>
                 </div>
               </form>

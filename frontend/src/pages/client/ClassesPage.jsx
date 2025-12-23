@@ -19,6 +19,9 @@ const ClassesPage = () => {
   const [selectedClassId, setSelectedClassId] = useState(null);
   const [studentInput, setStudentInput] = useState(''); // Single input for ID or Name
   const [errorMessage, setErrorMessage] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -106,6 +109,55 @@ const ClassesPage = () => {
     setShowStudentIdModal(true);
     setStudentInput('');
     setErrorMessage('');
+    setStudentSuggestions([]);
+    setShowSuggestions(false);
+    setSelectedStudent(null);
+  };
+
+  // Fetch student suggestions for autocomplete
+  const fetchStudentSuggestions = async (searchTerm) => {
+    if (!searchTerm || searchTerm.trim().length < 1) {
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${API_CONFIG.API_URL}/students/search/autocomplete?query=${encodeURIComponent(searchTerm)}`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        setStudentSuggestions(data.data);
+        setShowSuggestions(data.data.length > 0);
+      } else {
+        setStudentSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (err) {
+      console.error('Error fetching student suggestions:', err);
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleStudentInputChange = (e) => {
+    const value = e.target.value;
+    setStudentInput(value);
+    setErrorMessage('');
+    setSelectedStudent(null);
+    
+    // Fetch suggestions as user types
+    fetchStudentSuggestions(value);
+  };
+
+  const handleStudentSuggestionSelect = (student) => {
+    setStudentInput(`${student.name} (ID: ${student.studentId})`);
+    setSelectedStudent(student);
+    setStudentSuggestions([]);
+    setShowSuggestions(false);
+    setErrorMessage('');
   };
 
   const handleAttemptClass = async () => {
@@ -113,6 +165,9 @@ const ClassesPage = () => {
       setErrorMessage('Please enter your Student ID or Name');
       return;
     }
+
+    // Use selected student's ID if available, otherwise use input value
+    const studentIdToSend = selectedStudent ? selectedStudent.studentId : studentInput.trim();
 
     try {
       const response = await fetch(`${API_CONFIG.API_URL}/attempts`, {
@@ -122,8 +177,8 @@ const ClassesPage = () => {
         },
         body: JSON.stringify({
           classId: selectedClassId,
-          studentId: studentInput.trim(),
-          studentName: studentInput.trim() // Send same value for both, backend will handle validation
+          studentId: studentIdToSend,
+          studentName: studentIdToSend // Send same value for both, backend will handle validation
         })
       });
 
@@ -133,7 +188,7 @@ const ClassesPage = () => {
         // Update attempted status
         const attemptData = { 
           attempted: true, 
-          studentId: studentInput.trim()
+          studentId: studentIdToSend
         };
         setAttemptedClasses(prev => ({
           ...prev,
@@ -148,6 +203,9 @@ const ClassesPage = () => {
         setShowStudentIdModal(false);
         setStudentInput('');
         setErrorMessage('');
+        setStudentSuggestions([]);
+        setShowSuggestions(false);
+        setSelectedStudent(null);
         fetchClasses(); // Refresh classes to update counts
         alert('Successfully attempted class!');
       } else {
@@ -361,20 +419,49 @@ const ClassesPage = () => {
             <div className="modal-body">
               <div className="form-group">
                 <label htmlFor="studentInput">Student ID or Name *</label>
-                <input
-                  type="text"
-                  id="studentInput"
-                  value={studentInput}
-                  onChange={(e) => {
-                    setStudentInput(e.target.value);
-                    setErrorMessage('');
-                  }}
-                  placeholder="Enter Student ID or Name"
-                  autoFocus
-                />
+                <div className="student-search-container">
+                  <input
+                    type="text"
+                    id="studentInput"
+                    value={studentInput}
+                    onChange={handleStudentInputChange}
+                    onFocus={() => {
+                      if (studentInput) {
+                        fetchStudentSuggestions(studentInput);
+                      }
+                    }}
+                    onBlur={() => {
+                      // Delay hiding suggestions to allow click
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                    placeholder="Type Student ID, first name, last name, or full name..."
+                    autoFocus
+                    autoComplete="off"
+                  />
+                  {showSuggestions && studentSuggestions.length > 0 && (
+                    <div className="student-suggestions-dropdown">
+                      {studentSuggestions.map((student, index) => (
+                        <div
+                          key={student._id || index}
+                          onClick={() => handleStudentSuggestionSelect(student)}
+                        >
+                          <div>{student.name}</div>
+                          <div>ID: {student.studentId}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <small style={{ display: 'block', marginTop: '5px', color: '#666', fontSize: '0.9em' }}>
-                  You can enter your Student ID or your Name 
+                  Type to see suggestions of registered students
                 </small>
+                {selectedStudent && (
+                  <div style={{ marginTop: '10px', padding: '8px', backgroundColor: '#f0f8ff', borderRadius: '4px' }}>
+                    <p style={{ margin: 0, fontSize: '0.9em' }}>
+                      <strong>Selected:</strong> {selectedStudent.name} (ID: {selectedStudent.studentId})
+                    </p>
+                  </div>
+                )}
               </div>
               {errorMessage && (
                 <span className="error-message">{errorMessage}</span>

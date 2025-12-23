@@ -2,7 +2,7 @@
 
 ## Base URL
 ```
-https://lms-f679.onrender.com/api
+https://lms-tili.onrender.com/api
 ```
 
 ---
@@ -191,7 +191,7 @@ Content-Type: application/json
 
 ### Create Employee
 ```http
-POST https://lms-f679.onrender.com/api/admin/employees
+POST https://lms-tili.onrender.com/api/admin/employees
 Authorization: Bearer YOUR_JWT_TOKEN
 Content-Type: application/json
 
@@ -205,7 +205,7 @@ Content-Type: application/json
 
 ### Update Employee
 ```http
-PUT https://lms-f679.onrender.com/api/admin/employees/:id
+PUT https://lms-tili.onrender.com/api/admin/employees/:id
 Authorization: Bearer YOUR_JWT_TOKEN
 Content-Type: application/json
 
@@ -217,7 +217,7 @@ Content-Type: application/json
 
 ### Delete Employee
 ```http
-DELETE https://lms-f679.onrender.com/api/admin/employees/:id
+DELETE https://lms-tili.onrender.com/api/admin/employees/:id
 Authorization: Bearer YOUR_JWT_TOKEN
 ```
 

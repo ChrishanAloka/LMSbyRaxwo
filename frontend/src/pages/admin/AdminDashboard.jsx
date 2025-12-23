@@ -39,6 +39,20 @@ const AdminDashboard = () => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
+  // Helper function to get start and end dates of a month
+  const getMonthDateRange = (monthName, year = new Date().getFullYear()) => {
+    const monthIndex = months.findIndex(m => m.toLowerCase() === monthName.toLowerCase());
+    if (monthIndex === -1) return null;
+    
+    const startDate = new Date(year, monthIndex, 1);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(year, monthIndex + 1, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return { startDate, endDate };
+  };
+
   useEffect(() => {
     const userData = localStorage.getItem('user');
     const userTypeData = localStorage.getItem('userType');
@@ -171,14 +185,58 @@ const AdminDashboard = () => {
         }
       });
 
-      // Count paid students as those who have at least one payment record
-      const paidStudents = students.filter((student) => {
+      // Filter payments by month if selected
+      let filteredPayments = payments;
+      if (selectedMonth) {
+        filteredPayments = payments.filter((payment) => {
+          const paymentMonth = payment.month || '';
+          // Check if the payment month includes the selected month
+          // Payment month can be "January" or "January, February" format
+          return paymentMonth.toLowerCase().includes(selectedMonth.toLowerCase());
+        });
+        
+        // Recalculate studentsWithPayments based on filtered payments
+        studentsWithPayments.clear();
+        filteredPayments.forEach((payment) => {
+          const studentId = typeof payment.studentId === 'object' 
+            ? payment.studentId._id?.toString() || payment.studentId._id
+            : payment.studentId?.toString() || payment.studentId;
+          if (studentId) {
+            studentsWithPayments.add(studentId);
+          }
+        });
+      }
+
+      // Get month date range if month is selected
+      const monthDateRange = selectedMonth ? getMonthDateRange(selectedMonth) : null;
+
+      // Filter students by registration date if month is selected
+      // Only count students registered on or before the end of the selected month
+      let eligibleStudents = students;
+      if (selectedMonth && monthDateRange) {
+        eligibleStudents = students.filter((student) => {
+          // Use registrationDate if available, otherwise use createdAt
+          const registrationDate = student.registrationDate 
+            ? new Date(student.registrationDate)
+            : (student.createdAt ? new Date(student.createdAt) : null);
+          
+          if (!registrationDate) return false;
+          
+          // Student must be registered on or before the end of the selected month
+          return registrationDate <= monthDateRange.endDate;
+        });
+      }
+
+      // Count paid students as those who have at least one payment record (for selected month if filtered)
+      // AND are eligible (registered before/on the selected month)
+      const paidStudents = eligibleStudents.filter((student) => {
         const studentId = student._id?.toString() || student._id;
         return studentsWithPayments.has(studentId);
       }).length;
       
-      // Unpaid students are those without any payment records
-      const unpaidStudents = students.length - paidStudents;
+      // Unpaid students are those without any payment records (for selected month if filtered)
+      // AND are eligible (registered before/on the selected month)
+      const unpaidStudents = eligibleStudents.length - paidStudents;
 
       setSummary({
         totalEarnings: incomeData.data?.totalRevenue || 0,
@@ -262,7 +320,7 @@ const AdminDashboard = () => {
     }).format(value || 0);
   };
 
-  const createStudentReport = (students, filename, paymentMap = null) => {
+  const createStudentReport = (students, filename, paymentMap = null, isNonPaidReport = false) => {
     if (!studentsList.length) {
       alert('No student data available.');
       return;
@@ -275,7 +333,7 @@ const AdminDashboard = () => {
       return;
     }
 
-    const headers = ['Student ID', 'Student Name', 'Email', 'Mobile', 'Subjects', 'Payment Type'];
+    const headers = ['Student ID', 'Student Name', 'Registration Date', 'Email', 'Mobile', 'Subjects', 'Payment Type'];
     const rows = targetStudents.map((student) => {
       const subjectNames = Array.isArray(student.subjects)
         ? student.subjects
@@ -288,7 +346,10 @@ const AdminDashboard = () => {
 
       // Get payment type from payment records if paymentMap is provided
       let paymentType = '';
-      if (paymentMap) {
+      if (isNonPaidReport) {
+        // For non-paid reports, set payment type as "Non"
+        paymentType = 'Non';
+      } else if (paymentMap) {
         const studentId = student._id?.toString() || student._id;
         const paymentInfo = paymentMap.get(studentId);
         if (paymentInfo && paymentInfo.paymentMethod) {
@@ -299,9 +360,15 @@ const AdminDashboard = () => {
         paymentType = student.paymentType || '';
       }
 
+      // Format registration date (use manual registrationDate or fallback to createdAt)
+      const registrationDate = student.registrationDate 
+        ? new Date(student.registrationDate).toISOString().slice(0, 10)
+        : (student.createdAt ? new Date(student.createdAt).toISOString().slice(0, 10) : '');
+
       return [
         student.studentId || '',
         student.name || '',
+        registrationDate,
         student.email || '',
         student.mobile || '',
         subjectNames,
@@ -335,13 +402,34 @@ const AdminDashboard = () => {
     // Fetch payments to determine which students have payment records
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const paymentsResponse = await fetch(`${API_CONFIG.API_URL}/payments`, { headers });
+      
+      // Build query parameters for month filter
+      const paymentsParams = new URLSearchParams();
+      if (selectedMonth) {
+        paymentsParams.append('month', selectedMonth);
+      }
+      
+      const paymentsUrl = selectedMonth 
+        ? `${API_CONFIG.API_URL}/payments?${paymentsParams.toString()}`
+        : `${API_CONFIG.API_URL}/payments`;
+      
+      const paymentsResponse = await fetch(paymentsUrl, { headers });
       const paymentsData = await paymentsResponse.json();
       const payments = paymentsData.success ? paymentsData.data || [] : [];
 
-      // Create a Set of student IDs that have payment records
+      // Filter payments by month if selected
+      let filteredPayments = payments;
+      if (selectedMonth) {
+        filteredPayments = payments.filter((payment) => {
+          const paymentMonth = payment.month || '';
+          // Check if the payment month includes the selected month
+          return paymentMonth.toLowerCase().includes(selectedMonth.toLowerCase());
+        });
+      }
+
+      // Create a Set of student IDs that have payment records (for selected month if filtered)
       const studentsWithPayments = new Set();
-      payments.forEach((payment) => {
+      filteredPayments.forEach((payment) => {
         const studentId = typeof payment.studentId === 'object' 
           ? payment.studentId._id?.toString() || payment.studentId._id
           : payment.studentId?.toString() || payment.studentId;
@@ -350,12 +438,41 @@ const AdminDashboard = () => {
         }
       });
 
+      // Get month date range if month is selected
+      const monthDateRange = selectedMonth ? getMonthDateRange(selectedMonth) : null;
+
+      const reportFilename = selectedMonth 
+        ? `non-paid-students-${selectedMonth.toLowerCase()}`
+        : 'non-paid-students';
+
       createStudentReport(
-        (students) => students.filter((student) => {
-          const studentId = student._id?.toString() || student._id;
-          return !studentsWithPayments.has(studentId);
-        }),
-        'non-paid-students'
+        (students) => {
+          let eligibleStudents = students;
+          
+          // Filter by registration date if month is selected
+          if (selectedMonth && monthDateRange) {
+            eligibleStudents = students.filter((student) => {
+              // Use registrationDate if available, otherwise use createdAt
+              const registrationDate = student.registrationDate 
+                ? new Date(student.registrationDate)
+                : (student.createdAt ? new Date(student.createdAt) : null);
+              
+              if (!registrationDate) return false;
+              
+              // Student must be registered on or before the end of the selected month
+              return registrationDate <= monthDateRange.endDate;
+            });
+          }
+          
+          // Return non-paid students (no payment for selected month) who are eligible
+          return eligibleStudents.filter((student) => {
+            const studentId = student._id?.toString() || student._id;
+            return !studentsWithPayments.has(studentId);
+          });
+        },
+        reportFilename,
+        null,
+        true // isNonPaidReport = true
       );
     } catch (err) {
       console.error('Error fetching payments for report:', err);
@@ -367,16 +484,37 @@ const AdminDashboard = () => {
     // Fetch payments to determine which students have payment records
     try {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const paymentsResponse = await fetch(`${API_CONFIG.API_URL}/payments`, { headers });
+      
+      // Build query parameters for month filter
+      const paymentsParams = new URLSearchParams();
+      if (selectedMonth) {
+        paymentsParams.append('month', selectedMonth);
+      }
+      
+      const paymentsUrl = selectedMonth 
+        ? `${API_CONFIG.API_URL}/payments?${paymentsParams.toString()}`
+        : `${API_CONFIG.API_URL}/payments`;
+      
+      const paymentsResponse = await fetch(paymentsUrl, { headers });
       const paymentsData = await paymentsResponse.json();
       const payments = paymentsData.success ? paymentsData.data || [] : [];
 
-      // Create a Set of student IDs that have payment records
+      // Filter payments by month if selected
+      let filteredPayments = payments;
+      if (selectedMonth) {
+        filteredPayments = payments.filter((payment) => {
+          const paymentMonth = payment.month || '';
+          // Check if the payment month includes the selected month
+          return paymentMonth.toLowerCase().includes(selectedMonth.toLowerCase());
+        });
+      }
+
+      // Create a Set of student IDs that have payment records (for selected month if filtered)
       const studentsWithPayments = new Set();
       // Create a Map of student ID to payment methods (collect all unique payment methods)
       const studentPaymentMap = new Map();
       
-      payments.forEach((payment) => {
+      filteredPayments.forEach((payment) => {
         const studentId = typeof payment.studentId === 'object' 
           ? payment.studentId._id?.toString() || payment.studentId._id
           : payment.studentId?.toString() || payment.studentId;
@@ -400,12 +538,39 @@ const AdminDashboard = () => {
         });
       });
 
+      // Get month date range if month is selected
+      const monthDateRange = selectedMonth ? getMonthDateRange(selectedMonth) : null;
+
+      const reportFilename = selectedMonth 
+        ? `paid-students-${selectedMonth.toLowerCase()}`
+        : 'paid-students';
+
       createStudentReport(
-        (students) => students.filter((student) => {
-          const studentId = student._id?.toString() || student._id;
-          return studentsWithPayments.has(studentId);
-        }),
-        'paid-students',
+        (students) => {
+          let eligibleStudents = students;
+          
+          // Filter by registration date if month is selected
+          if (selectedMonth && monthDateRange) {
+            eligibleStudents = students.filter((student) => {
+              // Use registrationDate if available, otherwise use createdAt
+              const registrationDate = student.registrationDate 
+                ? new Date(student.registrationDate)
+                : (student.createdAt ? new Date(student.createdAt) : null);
+              
+              if (!registrationDate) return false;
+              
+              // Student must be registered on or before the end of the selected month
+              return registrationDate <= monthDateRange.endDate;
+            });
+          }
+          
+          // Return paid students (have payment for selected month) who are eligible
+          return eligibleStudents.filter((student) => {
+            const studentId = student._id?.toString() || student._id;
+            return studentsWithPayments.has(studentId);
+          });
+        },
+        reportFilename,
         studentPaymentMethodMap
       );
     } catch (err) {
@@ -548,7 +713,7 @@ const AdminDashboard = () => {
     },
     {
       id: 'unpaid-students',
-      label: 'Non-paid Students',
+      label: 'Non paid Students',
       value: summary.unpaidStudents,
       icon: nonPaidIcon,
       accent: 'metric-card-warning'
