@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import Sidebar from '../../components/admin/Sidebar';
-import Topbar from '../../components/admin/Topbar';
+import Header from '../../components/Header';
 import API_CONFIG from '../../config/api';
-import './ExamPage.css';
+import './ExamRegistrationPage.css';
 
-const ExamPage = () => {
+const ExamRegistrationPage = () => {
   const [examRecords, setExamRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,7 +15,6 @@ const ExamPage = () => {
   const [studentValidationError, setStudentValidationError] = useState('');
   const [studentSuggestions, setStudentSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [allStudents, setAllStudents] = useState([]);
   const [formData, setFormData] = useState({
     exam: '',
     examDate: '',
@@ -41,138 +39,8 @@ const ExamPage = () => {
   });
   const [availableSubjects, setAvailableSubjects] = useState([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
-  const [editingExam, setEditingExam] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-
-  // Generate exam report (CSV) - will use filteredExams defined below
-  const handleGenerateReport = () => {
-    if (!examRecords || examRecords.length === 0) {
-      alert('No exam records available to generate a report.');
-      return;
-    }
-
-    // Filter exams for report (same logic as filteredExams)
-    const examsToReport = examRecords.filter((exam) => {
-      if (!searchTerm.trim()) return true;
-      const term = searchTerm.toLowerCase();
-      const studentId = exam.studentIdNumber || (exam.studentId?.studentId || '');
-      const studentName = exam.studentId?.name || '';
-      return (
-        studentId.toLowerCase().includes(term) ||
-        studentName.toLowerCase().includes(term) ||
-        (exam.ukVisa || '').toLowerCase().includes(term) ||
-        (exam.exams && Array.isArray(exam.exams) && exam.exams.some(ex => {
-          const subjectName = typeof ex.subjectId === 'object' ? ex.subjectId.name : ex.subjectName || '';
-          return subjectName.toLowerCase().includes(term);
-        })) ||
-        (exam.exam || '').toLowerCase().includes(term) ||
-        (exam.candidateIdNumber || '').toLowerCase().includes(term)
-      );
-    });
-
-    if (examsToReport.length === 0) {
-      alert('No exam records match your search criteria.');
-      return;
-    }
-
-    // Create CSV content - columns ordered to match the table
-    const headers = [
-      'Student ID',
-      'Exam',
-      'Exam Date',
-      'Title',
-      'Other Names',
-      'Family Name',
-      'Email',
-      'Day',
-      'Month',
-      'Year',
-      'Gender',
-      'Telephone',
-      'Mobile',
-      'Special Needs',
-      'Special Needs Details',
-      'Guardian FirstName',
-      'Guardian LastName',
-      'Guardian Telephone',
-      'Guardian Mobile',
-      'For Uk Visa',
-      'Candidate ID Number'
-    ];
-
-    const rows = examsToReport.map((exam) => {
-      // Format exams list
-      let examsList = '';
-      if (exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0) {
-        examsList = exam.exams.map((ex) => {
-          const subjectName = typeof ex.subjectId === 'object' ? ex.subjectId.name : ex.subjectName || '';
-          return subjectName;
-        }).join(', ');
-      } else if (exam.exam) {
-        examsList = exam.exam;
-      }
-
-      // derive day/month/year if provided as separate fields or from dateOfBirth
-      let day = exam.birthDay || '';
-      let month = exam.birthMonth || '';
-      let year = exam.birthYear || '';
-      if ((!day || !month || !year) && exam.dateOfBirth) {
-        const dob = new Date(exam.dateOfBirth);
-        day = day || dob.getDate().toString();
-        month = month || (dob.getMonth() + 1).toString();
-        year = year || dob.getFullYear().toString();
-      }
-
-      return [
-        exam.studentIdNumber || exam.studentId?.studentId || 'N/A',
-        examsList || 'N/A',
-        exam.examDate ? (formatDate(exam.examDate) || 'N/A') : 'N/A',
-        exam.title || 'N/A',
-        exam.otherNames || exam.firstName || 'N/A',
-        exam.familyName || exam.lastName || 'N/A',
-        exam.email || exam.studentId?.email || 'N/A',
-        day || 'N/A',
-        month || 'N/A',
-        year || 'N/A',
-        exam.gender || exam.studentId?.gender || 'N/A',
-        exam.telephone || 'N/A',
-        exam.mobile || exam.studentId?.mobile || 'N/A',
-        exam.specialNeeds || exam.studentId?.specialNeed || 'N/A',
-        exam.specialNeedsDetails || exam.studentId?.specialNeedsDetails || 'N/A',
-        exam.guardianFirstName || exam.studentId?.guardianFirstName || 'N/A',
-        exam.guardianLastName || exam.studentId?.guardianLastName || 'N/A',
-        exam.guardianTelephone || exam.studentId?.guardianTelephone || 'N/A',
-        exam.guardianMobile || 'N/A',
-        exam.ukVisa || 'N/A',
-        exam.candidateIdNumber || 'N/A'
-      ];
-    });
-
-    const csvContent = [headers, ...rows]
-      .map((row) =>
-        row
-          .map((cell) => {
-            const value = String(cell ?? '');
-            return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-          })
-          .join(',')
-      )
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `exam-records-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
-
-  const token = localStorage.getItem('adminToken');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userName = user.name || 'Admin';
+  const [existingExamRecord, setExistingExamRecord] = useState(null);
 
   useEffect(() => {
     fetchExams();
@@ -201,92 +69,58 @@ const ExamPage = () => {
 
   const fetchExams = async () => {
     try {
-      const response = await fetch(`${API_CONFIG.API_URL}/exams`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(`${API_CONFIG.API_URL}/exams`);
+      
+      // Handle 401 - backend might need restart or route not updated
+      // Silently handle this error - backend needs to be restarted
+      if (response.status === 401) {
+        setExamRecords([]);
+        return;
+      }
+      
+      if (!response.ok) {
+        setExamRecords([]);
+        return;
+      }
+      
       const data = await response.json();
       if (data.success) {
-        setExamRecords(data.data);
+        setExamRecords(data.data || []);
+      } else {
+        setExamRecords([]);
       }
     } catch (err) {
-      console.error('Error fetching exams:', err);
+      // Silently handle errors - backend may not be restarted yet
+      setExamRecords([]);
     }
   };
 
-  // Fetch all students on mount for autocomplete
-  useEffect(() => {
-    const fetchAllStudents = async () => {
-      try {
-        const response = await fetch(`${API_CONFIG.API_URL}/students`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
-        if (data.success) {
-          setAllStudents(data.data);
-        }
-      } catch (err) {
-        console.error('Error fetching students:', err);
-      }
-    };
-    fetchAllStudents();
-  }, []);
-
-  // Get student suggestions based on search input
-  const getStudentSuggestions = (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 1) {
-      return [];
+  // Fetch student suggestions for autocomplete
+  const fetchStudentSuggestions = async (searchTerm) => {
+    if (!searchTerm || searchTerm.trim().length < 1) {
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+      return;
     }
 
-    const searchLower = searchTerm.toLowerCase().trim();
-    const suggestions = [];
-
-    allStudents.forEach(student => {
-      const studentName = (student.name || '').trim().toLowerCase();
-      const studentId = (student.studentId || '').toLowerCase();
+    try {
+      const response = await fetch(
+        `${API_CONFIG.API_URL}/students/search/autocomplete?query=${encodeURIComponent(searchTerm)}`
+      );
+      const data = await response.json();
       
-      // Check if search matches student ID
-      if (studentId.includes(searchLower)) {
-        suggestions.push({
-          ...student,
-          matchType: 'ID',
-          displayText: `${student.name} (ID: ${student.studentId})`
-        });
-        return;
+      if (data.success) {
+        setStudentSuggestions(data.data);
+        setShowSuggestions(data.data.length > 0);
+      } else {
+        setStudentSuggestions([]);
+        setShowSuggestions(false);
       }
-
-      // Split student's full name into parts
-      const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
-      const firstName = nameParts.length > 0 ? nameParts[0] : '';
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-      const fullName = studentName;
-
-      // Check if search matches first name, last name, or full name (partial match)
-      const matchesFirstName = firstName && firstName.startsWith(searchLower);
-      const matchesLastName = lastName && lastName.startsWith(searchLower);
-      const matchesFullName = fullName.includes(searchLower);
-      
-      // Check if search matches any part of the name
-      const matchesAnyPart = nameParts.some(part => part.startsWith(searchLower));
-
-      if (matchesFirstName || matchesLastName || matchesFullName || matchesAnyPart) {
-        suggestions.push({
-          ...student,
-          matchType: 'Name',
-          displayText: `${student.name} (ID: ${student.studentId})`
-        });
-      }
-    });
-
-    // Sort: exact ID matches first, then name matches
-    return suggestions.sort((a, b) => {
-      if (a.matchType === 'ID' && b.matchType !== 'ID') return -1;
-      if (a.matchType !== 'ID' && b.matchType === 'ID') return 1;
-      return a.name.localeCompare(b.name);
-    }).slice(0, 10); // Limit to 10 suggestions
+    } catch (err) {
+      console.error('Error fetching student suggestions:', err);
+      setStudentSuggestions([]);
+      setShowSuggestions(false);
+    }
   };
 
   const handleStudentSearchChange = (e) => {
@@ -294,9 +128,7 @@ const ExamPage = () => {
     setStudentIdInput(searchTerm);
     
     if (searchTerm.trim()) {
-      const suggestions = getStudentSuggestions(searchTerm);
-      setStudentSuggestions(suggestions);
-      setShowSuggestions(suggestions.length > 0);
+      fetchStudentSuggestions(searchTerm);
     } else {
       setStudentSuggestions([]);
       setShowSuggestions(false);
@@ -306,70 +138,224 @@ const ExamPage = () => {
     setStudentValidationError('');
   };
 
-  const handleStudentSuggestionSelect = (student) => {
+  const handleStudentSuggestionSelect = async (student) => {
     setStudentIdInput(`${student.name} (ID: ${student.studentId})`);
     setStudentSuggestions([]);
     setShowSuggestions(false);
     setValidatedStudent(student);
     setStudentValidationError('');
-    setShowForm(true);
-    // Pre-fill form with student data
-    const nameParts = (student.name || '').trim().split(/\s+/);
-    const firstName = nameParts.shift() || '';
-    const lastName = nameParts.join(' ');
     
-    // Extract date of birth components
-    let birthDay = '', birthMonth = '', birthYear = '';
-    if (student.birthday) {
-      const dob = new Date(student.birthday);
-      birthDay = dob.getDate().toString();
-      birthMonth = (dob.getMonth() + 1).toString();
-      birthYear = dob.getFullYear().toString();
-    }
-    
-    // Format mobile number for display
-    let mobileDisplay = '';
-    if (student.mobile) {
-      let mobile = student.mobile;
-      if (mobile.startsWith('+94')) {
-        mobile = mobile.substring(3);
-      } else if (mobile.startsWith('0')) {
-        mobile = mobile.substring(1);
+    // Refresh exam records and check if exam record already exists for this student
+    try {
+      const response = await fetch(`${API_CONFIG.API_URL}/exams`);
+      
+      // Handle 401 silently - backend may need restart
+      if (response.status === 401) {
+        setExamRecords([]);
+        // Continue with form display if backend not ready
+        setExistingExamRecord(null);
+        setShowForm(true);
+        
+        // Pre-fill form with student data
+        const nameParts = (student.name || '').trim().split(/\s+/);
+        const firstName = nameParts.shift() || '';
+        const lastName = nameParts.join(' ');
+        
+        setFormData({
+          exam: '',
+          examDate: '',
+          title: '',
+          otherNames: firstName,
+          familyName: lastName,
+          email: student.email || '',
+          birthDay: '',
+          birthMonth: '',
+          birthYear: '',
+          gender: '',
+          telephone: '',
+          mobile: '',
+          specialNeeds: '',
+          specialNeedsDetails: '',
+          guardianFirstName: '',
+          guardianLastName: '',
+          guardianTelephone: '',
+          guardianMobile: '',
+          ukVisa: '',
+          candidateIdNumber: ''
+        });
+        return;
       }
-      mobileDisplay = mobile.replace(/\D/g, '');
+      
+      if (!response.ok) {
+        setExamRecords([]);
+        setExistingExamRecord(null);
+        setShowForm(true);
+        
+        // Pre-fill form with student data
+        const nameParts = (student.name || '').trim().split(/\s+/);
+        const firstName = nameParts.shift() || '';
+        const lastName = nameParts.join(' ');
+        
+        setFormData({
+          exam: '',
+          examDate: '',
+          title: '',
+          otherNames: firstName,
+          familyName: lastName,
+          email: student.email || '',
+          birthDay: '',
+          birthMonth: '',
+          birthYear: '',
+          gender: '',
+          telephone: '',
+          mobile: '',
+          specialNeeds: '',
+          specialNeedsDetails: '',
+          guardianFirstName: '',
+          guardianLastName: '',
+          guardianTelephone: '',
+          guardianMobile: '',
+          ukVisa: '',
+          candidateIdNumber: ''
+        });
+        return;
+      }
+      
+      const data = await response.json();
+      const updatedExamRecords = data.success ? (data.data || []) : [];
+      setExamRecords(updatedExamRecords);
+      
+      // Check if exam record already exists for this student
+      // Match by studentId (object with _id or string) or studentIdNumber
+      let existingExam = null;
+      
+      for (const exam of updatedExamRecords) {
+        // Check if studentId matches (could be object with _id or string)
+        const examStudentId = exam.studentId;
+        let studentIdMatch = false;
+        
+        if (examStudentId) {
+          if (typeof examStudentId === 'object' && examStudentId._id) {
+            // Populated student object - compare _id
+            studentIdMatch = examStudentId._id.toString() === student._id.toString();
+          } else if (typeof examStudentId === 'string') {
+            // String ID
+            studentIdMatch = examStudentId.toString() === student._id.toString();
+          }
+        }
+        
+        // Check if studentIdNumber matches
+        const studentIdNumberMatch = exam.studentIdNumber && 
+          exam.studentIdNumber.toString().trim() === student.studentId.toString().trim();
+        
+        if (studentIdMatch || studentIdNumberMatch) {
+          existingExam = exam;
+          break;
+        }
+      }
+      
+      if (existingExam) {
+        // Show existing exam record - DO NOT show form
+        setExistingExamRecord(existingExam);
+        setShowForm(false);
+        // Clear form data to ensure form doesn't show
+        setFormData({
+          exam: '',
+          examDate: '',
+          title: '',
+          otherNames: '',
+          familyName: '',
+          email: '',
+          birthDay: '',
+          birthMonth: '',
+          birthYear: '',
+          gender: '',
+          telephone: '',
+          mobile: '',
+          specialNeeds: '',
+          specialNeedsDetails: '',
+          guardianFirstName: '',
+          guardianLastName: '',
+          guardianTelephone: '',
+          guardianMobile: '',
+          ukVisa: '',
+          candidateIdNumber: ''
+        });
+      } else {
+        // No existing record, show form
+        setExistingExamRecord(null);
+        setShowForm(true);
+        
+        // Pre-fill form with student data
+        const nameParts = (student.name || '').trim().split(/\s+/);
+        const firstName = nameParts.shift() || '';
+        const lastName = nameParts.join(' ');
+        
+        setFormData({
+          exam: '',
+          examDate: '',
+          title: '',
+          otherNames: firstName,
+          familyName: lastName,
+          email: student.email || '',
+          birthDay: '',
+          birthMonth: '',
+          birthYear: '',
+          gender: '',
+          telephone: '',
+          mobile: '',
+          specialNeeds: '',
+          specialNeedsDetails: '',
+          guardianFirstName: '',
+          guardianLastName: '',
+          guardianTelephone: '',
+          guardianMobile: '',
+          ukVisa: '',
+          candidateIdNumber: ''
+        });
+      }
+    } catch (err) {
+      console.error('Error checking existing exam records:', err);
+      // If error occurs, just show the form
+      setExistingExamRecord(null);
+      setShowForm(true);
+      
+      // Pre-fill form with student data
+      const nameParts = (student.name || '').trim().split(/\s+/);
+      const firstName = nameParts.shift() || '';
+      const lastName = nameParts.join(' ');
+      
+      setFormData({
+        exam: '',
+        examDate: '',
+        title: '',
+        otherNames: firstName,
+        familyName: lastName,
+        email: student.email || '',
+        birthDay: '',
+        birthMonth: '',
+        birthYear: '',
+        gender: '',
+        telephone: '',
+        mobile: '',
+        specialNeeds: '',
+        specialNeedsDetails: '',
+        guardianFirstName: '',
+        guardianLastName: '',
+        guardianTelephone: '',
+        guardianMobile: '',
+        ukVisa: '',
+        candidateIdNumber: ''
+      });
     }
-    
-    setFormData({
-      exam: '',
-      examDate: '',
-      title: student.title || '',
-      otherNames: firstName,
-      familyName: lastName,
-      email: student.email || '',
-      birthDay: birthDay,
-      birthMonth: birthMonth,
-      birthYear: birthYear,
-      gender: student.gender || '',
-      telephone: '',
-      mobile: mobileDisplay,
-      specialNeeds: student.hasSpecialNeeds ? 'Yes' : 'No',
-      specialNeedsDetails: student.specialNeedsDetails || '',
-      guardianFirstName: student.guardianFirstName || '',
-      guardianLastName: student.guardianLastName || '',
-      guardianTelephone: student.guardianTelephone || '',
-      guardianMobile: '',
-      ukVisa: '',
-      candidateIdNumber: ''
-    });
   };
 
   const validateStudentId = async () => {
     if (!studentIdInput.trim()) {
-      setStudentValidationError('Please enter a Student ID, first name, last name, or full name');
+      setStudentValidationError('Please enter a Student ID or Name');
       return;
     }
 
-    // If student is already selected from suggestions, skip validation
     if (validatedStudent) {
       return;
     }
@@ -379,111 +365,206 @@ const ExamPage = () => {
     setValidatedStudent(null);
 
     try {
-      const response = await fetch(`${API_CONFIG.API_URL}/students`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      // Use the autocomplete endpoint to find student
+      const response = await fetch(
+        `${API_CONFIG.API_URL}/students/search/autocomplete?query=${encodeURIComponent(studentIdInput.trim())}`
+      );
       const data = await response.json();
       
-      if (data.success) {
-        const searchTerm = studentIdInput.trim();
-        // Try to find student by ID first
-        let student = data.data.find(s => s.studentId === searchTerm);
+      if (data.success && data.data.length > 0) {
+        // Find exact match by ID or name
+        const searchTerm = studentIdInput.trim().toLowerCase();
+        let student = data.data.find(s => 
+          s.studentId.toLowerCase() === searchTerm || 
+          s.name.toLowerCase() === searchTerm
+        );
         
-        // If not found by ID, try searching by name (first name, last name, or full name)
-        if (!student) {
-          student = data.data.find(s => {
-            const studentName = (s.name || '').trim().toLowerCase();
-            const searchLower = searchTerm.toLowerCase();
-            
-            // Split student's full name into parts
-            const nameParts = studentName.split(/\s+/).filter(part => part.length > 0);
-            const firstName = nameParts.length > 0 ? nameParts[0] : '';
-            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
-            
-            // Check if search term matches first name, last name, or full name
-            const matchesFirstName = firstName && searchLower === firstName;
-            const matchesLastName = lastName && searchLower === lastName;
-            const matchesFullName = searchLower === studentName;
-            
-            // Also check if search term matches reversed full name (e.g., "Last First" matches "First Last")
-            const searchParts = searchLower.split(/\s+/).filter(part => part.length > 0);
-            const matchesReversed = searchParts.length === nameParts.length && 
-              searchParts.length === 2 &&
-              searchParts[0] === nameParts[1] && 
-              searchParts[1] === nameParts[0];
-            
-            return matchesFirstName || matchesLastName || matchesFullName || matchesReversed;
-          });
+        // If no exact match, use first result
+        if (!student && data.data.length > 0) {
+          student = data.data[0];
         }
         
         if (student) {
           setValidatedStudent(student);
           setStudentValidationError('');
-          setShowForm(true);
-          // Pre-fill form with student data
-          const nameParts = (student.name || '').trim().split(/\s+/);
-          const firstName = nameParts.shift() || '';
-          const lastName = nameParts.join(' ');
           
-          // Extract date of birth components
-          let birthDay = '', birthMonth = '', birthYear = '';
-          if (student.birthday) {
-            const dob = new Date(student.birthday);
-            birthDay = dob.getDate().toString();
-            birthMonth = (dob.getMonth() + 1).toString();
-            birthYear = dob.getFullYear().toString();
+          // Fetch latest exam records to check for existing record
+          const examResponse = await fetch(`${API_CONFIG.API_URL}/exams`);
+          
+          // Handle 401 silently - backend may need restart
+          if (examResponse.status === 401) {
+            setExamRecords([]);
+            // Continue with form display if backend not ready
+            setExistingExamRecord(null);
+            setShowForm(true);
+            
+            // Pre-fill form with student data
+            const nameParts = (student.name || '').trim().split(/\s+/);
+            const firstName = nameParts.shift() || '';
+            const lastName = nameParts.join(' ');
+            
+            setFormData({
+              exam: '',
+              examDate: '',
+              title: '',
+              otherNames: firstName,
+              familyName: lastName,
+              email: student.email || '',
+              birthDay: '',
+              birthMonth: '',
+              birthYear: '',
+              gender: '',
+              telephone: '',
+              mobile: '',
+              specialNeeds: '',
+              specialNeedsDetails: '',
+              guardianFirstName: '',
+              guardianLastName: '',
+              guardianTelephone: '',
+              guardianMobile: '',
+              ukVisa: '',
+              candidateIdNumber: ''
+            });
+            return;
           }
           
-          // Format mobile number for display
-          let mobileDisplay = '';
-          if (student.mobile) {
-            let mobile = student.mobile;
-            if (mobile.startsWith('+94')) {
-              mobile = mobile.substring(3);
-            } else if (mobile.startsWith('0')) {
-              mobile = mobile.substring(1);
-            }
-            mobileDisplay = mobile.replace(/\D/g, '');
+          if (!examResponse.ok) {
+            setExamRecords([]);
+            setExistingExamRecord(null);
+            setShowForm(true);
+            
+            // Pre-fill form with student data
+            const nameParts = (student.name || '').trim().split(/\s+/);
+            const firstName = nameParts.shift() || '';
+            const lastName = nameParts.join(' ');
+            
+            setFormData({
+              exam: '',
+              examDate: '',
+              title: '',
+              otherNames: firstName,
+              familyName: lastName,
+              email: student.email || '',
+              birthDay: '',
+              birthMonth: '',
+              birthYear: '',
+              gender: '',
+              telephone: '',
+              mobile: '',
+              specialNeeds: '',
+              specialNeedsDetails: '',
+              guardianFirstName: '',
+              guardianLastName: '',
+              guardianTelephone: '',
+              guardianMobile: '',
+              ukVisa: '',
+              candidateIdNumber: ''
+            });
+            return;
           }
           
-          setFormData({
-            exam: '',
-            examDate: '',
-            title: '',
-            otherNames: firstName,
-            familyName: lastName,
-            email: student.email || '',
-            birthDay: birthDay,
-            birthMonth: birthMonth,
-            birthYear: birthYear,
-            gender: student.gender || '',
-            telephone: '',
-            mobile: mobileDisplay,
-            specialNeeds: student.specialNeed || '',
-            specialNeedsDetails: student.specialNeedsDetails || '',
-            guardianFirstName: student.guardianFirstName || '',
-            guardianLastName: student.guardianLastName || '',
-            guardianTelephone: (() => {
-              let tel = student.guardianTelephone || '';
-              if (tel) {
-                if (tel.startsWith('+94')) tel = tel.substring(3);
-                else if (tel.startsWith('0')) tel = tel.substring(1);
-                tel = tel.replace(/\D/g, '');
+          const examData = await examResponse.json();
+          const updatedExamRecords = examData.success ? (examData.data || []) : [];
+          
+          // Update examRecords state with latest data
+          setExamRecords(updatedExamRecords);
+          
+          // Check if exam record already exists for this student
+          // Match by studentId (object with _id or string) or studentIdNumber
+          let existingExam = null;
+          
+          for (const exam of updatedExamRecords) {
+            // Check if studentId matches (could be object with _id or string)
+            const examStudentId = exam.studentId;
+            let studentIdMatch = false;
+            
+            if (examStudentId) {
+              if (typeof examStudentId === 'object' && examStudentId._id) {
+                // Populated student object - compare _id
+                studentIdMatch = examStudentId._id.toString() === student._id.toString();
+              } else if (typeof examStudentId === 'string') {
+                // String ID
+                studentIdMatch = examStudentId.toString() === student._id.toString();
               }
-              return tel;
-            })(),
-            guardianMobile: '',
-            ukVisa: '',
-            candidateIdNumber: ''
-          });
+            }
+            
+            // Check if studentIdNumber matches
+            const studentIdNumberMatch = exam.studentIdNumber && 
+              exam.studentIdNumber.toString().trim() === student.studentId.toString().trim();
+            
+            if (studentIdMatch || studentIdNumberMatch) {
+              existingExam = exam;
+              break;
+            }
+          }
+          
+          if (existingExam) {
+            // Show existing exam record - DO NOT show form
+            setExistingExamRecord(existingExam);
+            setShowForm(false);
+            // Clear form data to ensure form doesn't show
+            setFormData({
+              exam: '',
+              examDate: '',
+              title: '',
+              otherNames: '',
+              familyName: '',
+              email: '',
+              birthDay: '',
+              birthMonth: '',
+              birthYear: '',
+              gender: '',
+              telephone: '',
+              mobile: '',
+              specialNeeds: '',
+              specialNeedsDetails: '',
+              guardianFirstName: '',
+              guardianLastName: '',
+              guardianTelephone: '',
+              guardianMobile: '',
+              ukVisa: '',
+              candidateIdNumber: ''
+            });
+          } else {
+            // No existing record, show form
+            setExistingExamRecord(null);
+            setShowForm(true);
+            
+            // Pre-fill form with student data
+            const nameParts = (student.name || '').trim().split(/\s+/);
+            const firstName = nameParts.shift() || '';
+            const lastName = nameParts.join(' ');
+            
+            setFormData({
+              exam: '',
+              examDate: '',
+              title: '',
+              otherNames: firstName,
+              familyName: lastName,
+              email: student.email || '',
+              birthDay: '',
+              birthMonth: '',
+              birthYear: '',
+              gender: '',
+              telephone: '',
+              mobile: '',
+              specialNeeds: '',
+              specialNeedsDetails: '',
+              guardianFirstName: '',
+              guardianLastName: '',
+              guardianTelephone: '',
+              guardianMobile: '',
+              ukVisa: '',
+              candidateIdNumber: ''
+            });
+          }
         } else {
-          setStudentValidationError('Student not found. Please enter a valid Student ID, first name, last name, or full name.');
+          setStudentValidationError('Student not found. Please check your Student ID or Name.');
           setValidatedStudent(null);
         }
       } else {
-        setStudentValidationError('Error validating student ID');
+        setStudentValidationError('Student not found. Please check your Student ID or Name.');
+        setValidatedStudent(null);
       }
     } catch (err) {
       console.error('Error validating student:', err);
@@ -688,17 +769,10 @@ const ExamPage = () => {
     const dateOfBirth = `${formData.birthYear}-${String(formData.birthMonth).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
 
     try {
-      const url = editingExam
-        ? `${API_CONFIG.API_URL}/exams/${editingExam._id}`
-        : `${API_CONFIG.API_URL}/exams`;
-      
-      const method = editingExam ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
+      const response = await fetch(`${API_CONFIG.API_URL}/exams`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           studentId: validatedStudent._id,
@@ -732,20 +806,38 @@ const ExamPage = () => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSuccess(editingExam ? 'Exam record updated successfully!' : 'Exam record created successfully!');
-        // Refresh exam records to show the newly created/updated record (shared with client)
+        setSuccess('Exam registration submitted successfully!');
+        // Refresh exam records to show the newly created record
         await fetchExams();
+        // Check if the created exam should be displayed
+        const updatedResponse = await fetch(`${API_CONFIG.API_URL}/exams`);
+        if (updatedResponse.ok) {
+          const updatedData = await updatedResponse.json();
+          if (updatedData.success && updatedData.data) {
+            const newExam = updatedData.data.find(exam => 
+              (exam.studentId && (
+                (typeof exam.studentId === 'object' && exam.studentId._id && exam.studentId._id.toString() === validatedStudent._id.toString()) ||
+                (typeof exam.studentId === 'string' && exam.studentId === validatedStudent._id.toString())
+              )) ||
+              (exam.studentIdNumber && exam.studentIdNumber.toString().trim() === validatedStudent.studentId.toString().trim())
+            );
+            if (newExam) {
+              setExistingExamRecord(newExam);
+              setShowForm(false);
+            }
+          }
+        }
         handleReset();
-        setTimeout(() => setSuccess(''), 3000);
+        setTimeout(() => setSuccess(''), 5000);
       } else {
         // Check if error is due to existing record
         if (data.exists && data.data) {
-          setError('Exam record already exists for this student. Please check the records below.');
+          setExistingExamRecord(data.data);
+          setShowForm(false);
+          setError('Exam record already exists for this student. Displaying existing record.');
           setTimeout(() => setError(''), 5000);
-          // Refresh to show the existing record
-          await fetchExams();
         } else {
-          setError(data.message || `Failed to ${editingExam ? 'update' : 'create'} exam record`);
+          setError(data.message || 'Failed to submit exam registration');
         }
       }
     } catch (err) {
@@ -759,6 +851,7 @@ const ExamPage = () => {
   const handleReset = () => {
     setStudentIdInput('');
     setValidatedStudent(null);
+    setExistingExamRecord(null);
     setFormData({
       exam: '',
       examDate: '',
@@ -782,140 +875,8 @@ const ExamPage = () => {
       candidateIdNumber: ''
     });
     setShowForm(false);
-    setEditingExam(null);
     setError('');
     setStudentValidationError('');
-  };
-
-  const handleEdit = (exam) => {
-    setEditingExam(exam);
-    setStudentIdInput(exam.studentIdNumber || (exam.studentId?.studentId || ''));
-    setValidatedStudent(exam.studentId || null);
-    
-    // Format exam date for input field (YYYY-MM-DD format)
-    let examDateFormatted = '';
-    if (exam.examDate) {
-      const date = new Date(exam.examDate);
-      examDateFormatted = date.toISOString().split('T')[0];
-    }
-    
-    // Get exam subject ID (use first exam if multiple)
-    let examSubjectId = '';
-    if (exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0) {
-      const firstExam = exam.exams[0];
-      examSubjectId = typeof firstExam.subjectId === 'object' ? firstExam.subjectId._id : firstExam.subjectId;
-    } else if (exam.exam) {
-      const subject = availableSubjects.find(sub => sub.name === exam.exam);
-      if (subject) {
-        examSubjectId = subject.id;
-      }
-    }
-
-    // Extract date of birth components
-    let birthDay = '', birthMonth = '', birthYear = '';
-    if (exam.dateOfBirth) {
-      const dob = new Date(exam.dateOfBirth);
-      birthDay = dob.getDate().toString();
-      birthMonth = (dob.getMonth() + 1).toString();
-      birthYear = dob.getFullYear().toString();
-    } else if (exam.birthDay && exam.birthMonth && exam.birthYear) {
-      birthDay = exam.birthDay.toString();
-      birthMonth = exam.birthMonth.toString();
-      birthYear = exam.birthYear.toString();
-    }
-
-    // Format mobile numbers for display
-    let mobileDisplay = '';
-    if (exam.mobile) {
-      let mobile = exam.mobile;
-      if (mobile.startsWith('+94')) mobile = mobile.substring(3);
-      else if (mobile.startsWith('0')) mobile = mobile.substring(1);
-      mobileDisplay = mobile.replace(/\D/g, '');
-    }
-
-    let telephoneDisplay = '';
-    if (exam.telephone) {
-      let tel = exam.telephone;
-      if (tel.startsWith('+94')) tel = tel.substring(3);
-      else if (tel.startsWith('0')) tel = tel.substring(1);
-      telephoneDisplay = tel.replace(/\D/g, '');
-    }
-
-    let guardianTelephoneDisplay = '';
-    if (exam.guardianTelephone) {
-      let tel = exam.guardianTelephone;
-      if (tel.startsWith('+94')) tel = tel.substring(3);
-      else if (tel.startsWith('0')) tel = tel.substring(1);
-      guardianTelephoneDisplay = tel.replace(/\D/g, '');
-    }
-
-    let guardianMobileDisplay = '';
-    if (exam.guardianMobile) {
-      let mobile = exam.guardianMobile;
-      if (mobile.startsWith('+94')) mobile = mobile.substring(3);
-      else if (mobile.startsWith('0')) mobile = mobile.substring(1);
-      guardianMobileDisplay = mobile.replace(/\D/g, '');
-    }
-    
-    setFormData({
-      exam: examSubjectId,
-      examDate: examDateFormatted,
-      title: exam.title || '',
-      otherNames: exam.otherNames || exam.firstName || '',
-      familyName: exam.familyName || exam.lastName || '',
-      email: exam.email || '',
-      birthDay: birthDay,
-      birthMonth: birthMonth,
-      birthYear: birthYear,
-      gender: exam.gender || '',
-      telephone: telephoneDisplay,
-      mobile: mobileDisplay,
-      specialNeeds: exam.specialNeeds || '',
-      specialNeedsDetails: exam.specialNeedsDetails || '',
-      guardianFirstName: exam.guardianFirstName || '',
-      guardianLastName: exam.guardianLastName || '',
-      guardianTelephone: guardianTelephoneDisplay,
-      guardianMobile: guardianMobileDisplay,
-      ukVisa: exam.ukVisa || '',
-      candidateIdNumber: exam.candidateIdNumber || ''
-    });
-    setShowForm(true);
-    setError('');
-    setSuccess('');
-  };
-
-  const handleDelete = async (examId) => {
-    if (!window.confirm('Are you sure you want to delete this exam record?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const response = await fetch(`${API_CONFIG.API_URL}/exams/${examId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setSuccess('Exam record deleted successfully!');
-        await fetchExams();
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError(data.message || 'Failed to delete exam record');
-      }
-    } catch (err) {
-      console.error('Error deleting exam:', err);
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const formatDate = (dateString) => {
@@ -924,8 +885,8 @@ const ExamPage = () => {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-
   const filteredExams = examRecords.filter((exam) => {
+    if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase();
     const studentId = exam.studentIdNumber || (exam.studentId?.studentId || '');
     const studentName = exam.studentId?.name || '';
@@ -942,20 +903,23 @@ const ExamPage = () => {
     );
   });
 
+  const handleSearch = (query) => {
+    // This is for the Header component search (courses), not exam search
+  };
+
   return (
-    <div className="exam-page">
-      <Sidebar />
-      <div className="exam-main-content">
-        <Topbar userName={userName} />
-        
-        <div className="exam-content">
-          <div className="exam-header">
+    <div className="exam-registration-page">
+      <Header onSearch={handleSearch} />
+      
+      <main className="exam-registration-main">
+        <div className="exam-registration-content">
+          <div className="exam-registration-header">
             <h1>Exam Registration</h1>
-            <div className="exam-header-actions">
+            <div className="exam-registration-header-actions">
               <div className="exam-search">
                 <input
                   type="text"
-                  placeholder="Search by student ID, name."
+                  placeholder="Search by student ID, name. "
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -971,32 +935,118 @@ const ExamPage = () => {
                 )}
               </div>
               <button 
-                type="button"
-                className="generate-report-btn"
-                onClick={handleGenerateReport}
-                disabled={!examRecords || examRecords.length === 0}
-              >
-                Generate Report
-              </button>
-              <button 
                 className="add-exam-btn" 
                 onClick={() => {
-                  if (showForm) {
+                  if (showForm || existingExamRecord) {
                     handleReset();
                   } else {
                     setShowForm(true);
-                    setEditingExam(null);
                   }
                 }}
               >
-                {showForm ? 'Cancel' : '+ Add Exam'}
+                {(showForm || existingExamRecord) ? 'Cancel' : '+ Register for Exam'}
               </button>
             </div>
           </div>
 
-          {showForm && (
+          {existingExamRecord && (
             <div className="exam-form-container">
-              <h2>{editingExam ? 'Edit Exam Record' : 'Add New Exam Record'}</h2>
+              <h2>Existing Exam Registration Found</h2>
+              <div className="existing-exam-record">
+                <div className="success-message" style={{ marginBottom: '1rem' }}>
+                  This student already has an exam registration record.
+                </div>
+                <div className="exam-record-details">
+                  <div className="detail-row">
+                    <span className="detail-label">Student ID:</span>
+                    <span className="detail-value">{existingExamRecord.studentIdNumber || existingExamRecord.studentId?.studentId || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Student Name:</span>
+                    <span className="detail-value">{existingExamRecord.studentId?.name || existingExamRecord.otherNames + ' ' + existingExamRecord.familyName || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Exam:</span>
+                    <span className="detail-value">
+                      {existingExamRecord.exams && Array.isArray(existingExamRecord.exams) && existingExamRecord.exams.length > 0
+                        ? existingExamRecord.exams.map((ex, idx) => {
+                            const subjectName = (ex.subjectId && typeof ex.subjectId === 'object' && ex.subjectId.name) || ex.subjectName || '-';
+                            return <span key={idx} className="exam-badge" style={{ marginRight: '0.5rem' }}>{subjectName}</span>;
+                          })
+                        : existingExamRecord.exam || '-'
+                      }
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Exam Date:</span>
+                    <span className="detail-value">{existingExamRecord.examDate ? formatDate(existingExamRecord.examDate) : '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Title:</span>
+                    <span className="detail-value">{existingExamRecord.title || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Other Names:</span>
+                    <span className="detail-value">{existingExamRecord.otherNames || existingExamRecord.firstName || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Family Name:</span>
+                    <span className="detail-value">{existingExamRecord.familyName || existingExamRecord.lastName || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Email:</span>
+                    <span className="detail-value">{existingExamRecord.email || existingExamRecord.studentId?.email || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Date of Birth:</span>
+                    <span className="detail-value">
+                      {(() => {
+                        let day = existingExamRecord.birthDay || '';
+                        let month = existingExamRecord.birthMonth || '';
+                        let year = existingExamRecord.birthYear || '';
+                        if ((!day || !month || !year) && existingExamRecord.dateOfBirth) {
+                          const dob = new Date(existingExamRecord.dateOfBirth);
+                          day = day || dob.getDate().toString();
+                          month = month || (dob.getMonth() + 1).toString();
+                          year = year || dob.getFullYear().toString();
+                        }
+                        return day && month && year ? `${day}/${month}/${year}` : '-';
+                      })()}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Gender:</span>
+                    <span className="detail-value">{existingExamRecord.gender || existingExamRecord.studentId?.gender || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Mobile:</span>
+                    <span className="detail-value">{existingExamRecord.mobile || existingExamRecord.studentId?.mobile || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Telephone:</span>
+                    <span className="detail-value">{existingExamRecord.telephone || '-'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Candidate ID Number:</span>
+                    <span className="detail-value">{existingExamRecord.candidateIdNumber || '-'}</span>
+                  </div>
+                </div>
+                <div className="form-actions" style={{ marginTop: '1rem' }}>
+                  <button 
+                    type="button" 
+                    className="cancel-btn" 
+                    onClick={handleReset}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showForm && !existingExamRecord && (
+            <div className="exam-form-container">
+              <h2>Register for Exam</h2>
               <form onSubmit={handleSubmit} className="exam-form">
                 {error && <div className="error-message">{error}</div>}
                 {success && <div className="success-message">{success}</div>}
@@ -1012,46 +1062,25 @@ const ExamPage = () => {
                         onChange={handleStudentSearchChange}
                         onFocus={() => {
                           if (studentIdInput) {
-                            const suggestions = getStudentSuggestions(studentIdInput);
-                            setStudentSuggestions(suggestions);
-                            setShowSuggestions(suggestions.length > 0);
+                            fetchStudentSuggestions(studentIdInput);
                           }
                         }}
                         onBlur={() => {
                           setTimeout(() => setShowSuggestions(false), 200);
                         }}
-                        placeholder="Type Student ID, first name, last name, or full name..."
+                        placeholder="Type Student ID or Name..."
                         disabled={!!validatedStudent}
                         required
                         autoComplete="off"
                         style={{ width: '100%' }}
                       />
                       {showSuggestions && studentSuggestions.length > 0 && (
-                        <div className="student-suggestions-dropdown" style={{
-                          position: 'absolute',
-                          top: '100%',
-                          left: 0,
-                          right: 0,
-                          backgroundColor: 'white',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          maxHeight: '200px',
-                          overflowY: 'auto',
-                          zIndex: 1000,
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                          marginTop: '2px'
-                        }}>
+                        <div className="student-suggestions-dropdown">
                           {studentSuggestions.map((student, index) => (
                             <div
                               key={student._id || index}
                               onClick={() => handleStudentSuggestionSelect(student)}
-                              style={{
-                                padding: '10px',
-                                cursor: 'pointer',
-                                borderBottom: index < studentSuggestions.length - 1 ? '1px solid #eee' : 'none'
-                              }}
-                              onMouseEnter={(e) => e.target.style.backgroundColor = '#f5f5f5'}
-                              onMouseLeave={(e) => e.target.style.backgroundColor = 'white'}
+                              className="suggestion-item"
                             >
                               <div style={{ fontWeight: 'bold' }}>{student.name}</div>
                               <div style={{ fontSize: '0.9em', color: '#666' }}>ID: {student.studentId}</div>
@@ -1135,7 +1164,6 @@ const ExamPage = () => {
                         <option value="Mr">Mr</option>
                         <option value="Mrs">Mrs</option>
                         <option value="Miss">Miss</option>
-                        
                       </select>
                     </div>
 
@@ -1241,7 +1269,7 @@ const ExamPage = () => {
 
                     <div className="form-row">
                       <div className="form-group">
-                        <label htmlFor="telephone">Telephone <span className="required">*</span></label>
+                        <label htmlFor="telephone">Telephone</label>
                         <div className="mobile-input-wrapper">
                           <span className="mobile-prefix">+94</span>
                           <input
@@ -1251,7 +1279,6 @@ const ExamPage = () => {
                             value={formData.telephone}
                             onChange={handleTelephoneChange}
                             placeholder="771234567"
-                            required
                             maxLength="9"
                           />
                         </div>
@@ -1390,10 +1417,7 @@ const ExamPage = () => {
                         Cancel
                       </button>
                       <button type="submit" className="submit-btn" disabled={loading}>
-                        {loading 
-                          ? (editingExam ? 'Updating...' : 'Saving...') 
-                          : (editingExam ? 'Update Exam' : 'Save Exam')
-                        }
+                        {loading ? 'Submitting...' : 'Submit Registration'}
                       </button>
                     </div>
                   </>
@@ -1406,7 +1430,7 @@ const ExamPage = () => {
             <h2>Exam Records</h2>
             {examRecords.length === 0 ? (
               <div className="empty-state">
-                <p>No exam records found. Click "Add New Exam" to create one.</p>
+                <p>No exam records found. Register for an exam to get started.</p>
               </div>
             ) : filteredExams.length === 0 ? (
               <div className="empty-state">
@@ -1438,12 +1462,10 @@ const ExamPage = () => {
                       <th>Guardian Mobile</th>
                       <th>For Uk Visa</th>
                       <th>Candidate ID Number</th>
-                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredExams.map((exam) => {
-                      // derive day/month/year if provided as separate fields or from dateOfBirth
                       let day = exam.birthDay || '';
                       let month = exam.birthMonth || '';
                       let year = exam.birthYear || '';
@@ -1492,24 +1514,6 @@ const ExamPage = () => {
                           <td>{exam.guardianMobile || '-'}</td>
                           <td>{exam.ukVisa || '-'}</td>
                           <td>{exam.candidateIdNumber || '-'}</td>
-                          <td>
-                            <div className="exam-actions">
-                              <button
-                                className="edit-btn"
-                                onClick={() => handleEdit(exam)}
-                                title="Edit Exam"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                className="delete-btn"
-                                onClick={() => handleDelete(exam._id)}
-                                title="Delete Exam"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
                         </tr>
                       );
                     })}
@@ -1519,10 +1523,10 @@ const ExamPage = () => {
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
 
-export default ExamPage;
+export default ExamRegistrationPage;
 

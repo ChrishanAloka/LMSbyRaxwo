@@ -647,7 +647,7 @@ const StudentsPage = () => {
               <div className="students-search">
                 <input
                   type="text"
-                  placeholder="Search by name, ID, email, or subject"
+                  placeholder="Search by name, ID, email."
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />

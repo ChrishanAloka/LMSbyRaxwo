@@ -426,7 +426,7 @@ const EmployeePage = () => {
               <div className="employee-search">
                 <input
                   type="text"
-                  placeholder="Search by name, email, or role"
+                  placeholder="Search by name, email, role."
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />

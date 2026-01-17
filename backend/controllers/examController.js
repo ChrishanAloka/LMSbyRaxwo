@@ -129,11 +129,23 @@ export const createExam = async (req, res) => {
     }
 
     // Check if exam record already exists for this student
-    const existingExam = await Exam.findOne({ studentId });
+    // Check by both studentId (ObjectId) and studentIdNumber (string)
+    const existingExam = await Exam.findOne({
+      $or: [
+        { studentId: studentId },
+        { studentIdNumber: studentIdNumber ? studentIdNumber.trim() : undefined }
+      ]
+    });
     if (existingExam) {
+      // Populate the existing exam before returning
+      await existingExam.populate('studentId', 'name studentId email birthday gender mobile hasSpecialNeeds specialNeed specialNeedsDetails guardianFirstName guardianLastName guardianTelephone');
+      await existingExam.populate('exams.subjectId', 'name');
+      
       return res.status(400).json({
         success: false,
-        message: 'Exam record already exists for this student'
+        message: 'Exam record already exists for this student',
+        data: existingExam,
+        exists: true
       });
     }
 
@@ -340,6 +352,51 @@ export const deleteExam = async (req, res) => {
     res.status(200).json({
       success: true,
       message: 'Exam record deleted successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Check if exam record exists for a student
+// @route   GET /api/exams/student/:studentId
+// @access  Public (both admin and client can check)
+export const checkExamByStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { studentIdNumber } = req.query;
+
+    // Check by studentId (ObjectId) or studentIdNumber (string)
+    let exam = null;
+    
+    if (studentId && studentId !== 'undefined') {
+      exam = await Exam.findOne({ studentId })
+        .populate('studentId', 'name studentId email birthday gender mobile hasSpecialNeeds specialNeed specialNeedsDetails guardianFirstName guardianLastName guardianTelephone')
+        .populate('exams.subjectId', 'name');
+    }
+    
+    // If not found by studentId, try studentIdNumber
+    if (!exam && studentIdNumber) {
+      exam = await Exam.findOne({ studentIdNumber: studentIdNumber.trim() })
+        .populate('studentId', 'name studentId email birthday gender mobile hasSpecialNeeds specialNeed specialNeedsDetails guardianFirstName guardianLastName guardianTelephone')
+        .populate('exams.subjectId', 'name');
+    }
+
+    if (exam) {
+      return res.status(200).json({
+        success: true,
+        exists: true,
+        data: exam
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      exists: false,
+      data: null
     });
   } catch (error) {
     res.status(500).json({

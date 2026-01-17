@@ -190,7 +190,7 @@ const ExpensesPage = () => {
               <div className="expenses-search">
                 <input
                   type="text"
-                  placeholder="Search by year, month, type, or amount"
+                  placeholder="Search by year, month, type."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />

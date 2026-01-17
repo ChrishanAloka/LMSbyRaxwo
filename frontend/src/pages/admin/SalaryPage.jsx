@@ -418,7 +418,7 @@ const SalaryPage = () => {
               <div className="salary-search">
                 <input
                   type="text"
-                  placeholder="Search by employee name or role"
+                  placeholder="Search by name or role"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />

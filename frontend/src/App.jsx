@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import CoursesPage from './pages/client/CoursesPage';
 import ClassesPage from './pages/client/ClassesPage';
+import ExamRegistrationPage from './pages/client/ExamRegistrationPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import LoginPage from './pages/admin/LoginPage';
 import SubjectsPage from './pages/admin/SubjectsPage';
@@ -28,6 +29,7 @@ const App = () => {
           <Route path="/" element={<CoursesPage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/classes" element={<ClassesPage />} />
+          <Route path="/exam-registration" element={<ExamRegistrationPage />} />
           
           {/* Admin Authentication */}
           <Route path="/admin/login" element={<LoginPage />} />

@@ -228,7 +228,7 @@ const SubjectsPage = () => {
               <div className="subjects-search">
                 <input
                   type="text"
-                  placeholder="Search by subject name or teacher"
+                  placeholder="Search by name or teacher."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />

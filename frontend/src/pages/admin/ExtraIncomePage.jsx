@@ -299,7 +299,7 @@ const ExtraIncomePage = () => {
               <div className="extra-income-search">
                 <input
                   type="text"
-                  placeholder="Search by title, description, or month"
+                  placeholder="Search by title, month, Des."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                 />

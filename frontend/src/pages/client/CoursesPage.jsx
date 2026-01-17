@@ -90,6 +90,9 @@ const CoursesPage = () => {
             <button className="attempt-class-btn" onClick={() => navigate('/classes')}>
               Attemp Class
             </button>
+            <button className="attempt-class-btn" onClick={() => navigate('/exam-registration')}>
+              Exam Registration
+            </button>
           </div>
         </div>
 
