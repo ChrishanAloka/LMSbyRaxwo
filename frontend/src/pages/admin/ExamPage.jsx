@@ -598,11 +598,6 @@ const ExamPage = () => {
       return;
     }
 
-    if (!formData.examDate) {
-      setError('Please select exam date');
-      setLoading(false);
-      return;
-    }
 
     if (!formData.title.trim()) {
       setError('Please enter title');
@@ -1111,14 +1106,13 @@ const ExamPage = () => {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="examDate">Exam Date <span className="required">*</span></label>
+                      <label htmlFor="examDate">Exam Date</label>
                       <input
                         type="date"
                         id="examDate"
                         name="examDate"
                         value={formData.examDate}
                         onChange={handleInputChange}
-                        required
                       />
                     </div>
 

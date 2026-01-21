@@ -679,12 +679,6 @@ const ExamRegistrationPage = () => {
       return;
     }
 
-    if (!formData.examDate) {
-      setError('Please select exam date');
-      setLoading(false);
-      return;
-    }
-
     if (!formData.title.trim()) {
       setError('Please enter title');
       setLoading(false);
@@ -1140,14 +1134,13 @@ const ExamRegistrationPage = () => {
                     </div>
 
                     <div className="form-group">
-                      <label htmlFor="examDate">Exam Date <span className="required">*</span></label>
+                      <label htmlFor="examDate">Exam Date</label>
                       <input
                         type="date"
                         id="examDate"
                         name="examDate"
                         value={formData.examDate}
                         onChange={handleInputChange}
-                        required
                       />
                     </div>
 
@@ -1427,7 +1420,7 @@ const ExamRegistrationPage = () => {
           )}
 
           <div className="exam-records-section">
-            <h2>Exam Records</h2>
+            <h2>Registration Details</h2>
             {examRecords.length === 0 ? (
               <div className="empty-state">
                 <p>No exam records found. Register for an exam to get started.</p>
@@ -1442,43 +1435,22 @@ const ExamRegistrationPage = () => {
                   <thead>
                     <tr>
                       <th>Student ID</th>
+                      <th>Name</th>
                       <th>Exam</th>
-                      <th>Exam Date</th>
-                      <th>Title</th>
-                      <th>Other Names</th>
-                      <th>Family Name</th>
-                      <th>Email</th>
-                      <th>Day</th>
-                      <th>Month</th>
-                      <th>Year</th>
-                      <th>Gender</th>
-                      <th>Telephone</th>
-                      <th>Mobile</th>
-                      <th>Special Needs</th>
-                      <th>Special Needs Details</th>
-                      <th>Guardian FirstName</th>
-                      <th>Guardian LastName</th>
-                      <th>Guardian Telephone</th>
-                      <th>Guardian Mobile</th>
-                      <th>For Uk Visa</th>
-                      <th>Candidate ID Number</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredExams.map((exam) => {
-                      let day = exam.birthDay || '';
-                      let month = exam.birthMonth || '';
-                      let year = exam.birthYear || '';
-                      if ((!day || !month || !year) && exam.dateOfBirth) {
-                        const dob = new Date(exam.dateOfBirth);
-                        day = day || dob.getDate().toString();
-                        month = month || (dob.getMonth() + 1).toString();
-                        year = year || dob.getFullYear().toString();
-                      }
+                      // Get student name - combine otherNames/firstName and familyName/lastName
+                      const firstName = exam.otherNames || exam.firstName || exam.studentId?.name?.split(' ')[0] || '';
+                      const lastName = exam.familyName || exam.lastName || exam.studentId?.name?.split(' ').slice(1).join(' ') || '';
+                      const fullName = exam.studentId?.name || `${firstName} ${lastName}`.trim() || '-';
                       
                       return (
                         <tr key={exam._id}>
                           <td className="student-id-cell">{exam.studentIdNumber || exam.studentId?.studentId || '-'}</td>
+                          <td className="student-name-cell">{fullName}</td>
                           <td className="exam-subject-cell">
                             <div className="subject-badges">
                               {exam.exams && Array.isArray(exam.exams) && exam.exams.length > 0
@@ -1495,25 +1467,9 @@ const ExamRegistrationPage = () => {
                               }
                             </div>
                           </td>
-                          <td>{exam.examDate ? formatDate(exam.examDate) : '-'}</td>
-                          <td>{exam.title || '-'}</td>
-                          <td className="student-name-cell">{exam.otherNames || exam.firstName || '-'}</td>
-                          <td className="student-name-cell">{exam.familyName || exam.lastName || '-'}</td>
-                          <td>{exam.email || exam.studentId?.email || '-'}</td>
-                          <td>{day || '-'}</td>
-                          <td>{month || '-'}</td>
-                          <td>{year || '-'}</td>
-                          <td>{exam.gender || exam.studentId?.gender || '-'}</td>
-                          <td>{exam.telephone || '-'}</td>
-                          <td>{exam.mobile || exam.studentId?.mobile || '-'}</td>
-                          <td>{exam.specialNeeds || exam.studentId?.specialNeed || '-'}</td>
-                          <td className="details-cell">{exam.specialNeedsDetails || exam.studentId?.specialNeedsDetails || '-'}</td>
-                          <td>{exam.guardianFirstName || exam.studentId?.guardianFirstName || '-'}</td>
-                          <td>{exam.guardianLastName || exam.studentId?.guardianLastName || '-'}</td>
-                          <td>{exam.guardianTelephone || exam.studentId?.guardianTelephone || '-'}</td>
-                          <td>{exam.guardianMobile || '-'}</td>
-                          <td>{exam.ukVisa || '-'}</td>
-                          <td>{exam.candidateIdNumber || '-'}</td>
+                          <td>
+                            <span className="status-badge registered">Registered</span>
+                          </td>
                         </tr>
                       );
                     })}
