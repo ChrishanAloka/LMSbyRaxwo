@@ -36,10 +36,14 @@ const EmployeePage = () => {
     Employee: false,
     Students: false,
     Subjects: false,
+    Payment: false,
     Class: false,
     Expenses: false,
     Salary: false,
-    Income: false
+    'Extra Income': false,
+    Finance: false,
+    Marks: false,
+    Exam: false
   });
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -278,10 +282,14 @@ const EmployeePage = () => {
       Employee: employee.permissions?.Employee || false,
       Students: employee.permissions?.Students || false,
       Subjects: employee.permissions?.Subjects || false,
+      Payment: employee.permissions?.Payment || false,
       Class: employee.permissions?.Class || false,
       Expenses: employee.permissions?.Expenses || false,
       Salary: employee.permissions?.Salary || false,
-      Income: employee.permissions?.Income || false
+      'Extra Income': employee.permissions?.['Extra Income'] || false,
+      Finance: employee.permissions?.Finance || employee.permissions?.Income || false, // Support both for backward compatibility
+      Marks: employee.permissions?.Marks || false,
+      Exam: employee.permissions?.Exam || false
     });
   };
 
@@ -331,9 +339,14 @@ const EmployeePage = () => {
       Employee: false,
       Students: false,
       Subjects: false,
+      Payment: false,
+      Class: false,
       Expenses: false,
       Salary: false,
-      Income: false
+      'Extra Income': false,
+      Finance: false,
+      Marks: false,
+      Exam: false
     });
   };
 
@@ -877,6 +890,18 @@ const EmployeePage = () => {
                     <label className="permission-checkbox">
                       <input
                         type="checkbox"
+                        checked={permissions.Payment}
+                        onChange={() => handlePermissionChange('Payment')}
+                      />
+                      <span className="checkmark"></span>
+                      Payment
+                    </label>
+                  </div>
+
+                  <div className="permission-item">
+                    <label className="permission-checkbox">
+                      <input
+                        type="checkbox"
                         checked={permissions.Class}
                         onChange={() => handlePermissionChange('Class')}
                       />
@@ -913,11 +938,47 @@ const EmployeePage = () => {
                     <label className="permission-checkbox">
                       <input
                         type="checkbox"
-                        checked={permissions.Income}
-                        onChange={() => handlePermissionChange('Income')}
+                        checked={permissions['Extra Income']}
+                        onChange={() => handlePermissionChange('Extra Income')}
                       />
                       <span className="checkmark"></span>
-                      Income
+                      Extra Income
+                    </label>
+                  </div>
+
+                  <div className="permission-item">
+                    <label className="permission-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={permissions.Finance}
+                        onChange={() => handlePermissionChange('Finance')}
+                      />
+                      <span className="checkmark"></span>
+                      Finance
+                    </label>
+                  </div>
+
+                  <div className="permission-item">
+                    <label className="permission-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={permissions.Marks}
+                        onChange={() => handlePermissionChange('Marks')}
+                      />
+                      <span className="checkmark"></span>
+                      Marks
+                    </label>
+                  </div>
+
+                  <div className="permission-item">
+                    <label className="permission-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={permissions.Exam}
+                        onChange={() => handlePermissionChange('Exam')}
+                      />
+                      <span className="checkmark"></span>
+                      Exam
                     </label>
                   </div>
                 </div>
