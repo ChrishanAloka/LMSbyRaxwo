@@ -92,6 +92,11 @@ app.delete('/api/test/s3-delete', testS3Delete);
 // Connect to Database
 connectDB();
 
+// Health check
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ status: 'OK', message: 'Server is running' });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server Started on http://localhost:${PORT}`);
