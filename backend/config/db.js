@@ -4,7 +4,7 @@ export const connectDB = async () => {
   try {
     // Try the SRV connection first
     const uri = "mongodb+srv://sdeshan960_db_user:ccD9dtJQP85rOLkI@lms.6jppdbx.mongodb.net/lms";
-    
+
     await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 15000, // 15 seconds timeout
       retryWrites: true,
@@ -12,7 +12,7 @@ export const connectDB = async () => {
       // useNewUrlParser: true,
       // useUnifiedTopology: true,
     });
-    
+
     console.log(" Database Connected Successfully");
     return true;
   } catch (err) {
