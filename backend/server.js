@@ -32,7 +32,7 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // List of allowed origins
     const allowedOrigins = [
       'http://localhost:5173',
@@ -41,7 +41,7 @@ const corsOptions = {
       'https://lms-tili.onrender.com',
       // Add your production frontend URLs here when deployed
     ];
-    
+
     if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.onrender.com')) {
       callback(null, true);
     } else {
@@ -71,7 +71,7 @@ const storage = multer.diskStorage({
   }
 });
 
-export const upload = multer({ 
+export const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -122,8 +122,9 @@ connectDB();
 
 // Health check
 app.get('/api/health', (req, res) => {
-    res.status(200).json({ status: 'OK', message: 'Server is running' });
+  res.status(200).json({ status: 'OK', message: 'Server is running' });
 });
+
 
 // Start server
 app.listen(PORT, () => {
